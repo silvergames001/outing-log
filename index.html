@@ -413,6 +413,34 @@
       box-shadow: -12px 0 32px rgba(0, 0, 0, 0.12);
     }
 
+    /* 앱을 처음 열었을 때(전환 애니메이션 없이 바로 활성화되는 화면)
+       버튼/입력 필드가 툭 튀어나오지 않고 하나씩 부드럽게 올라오며 나타나게 한다.
+       setupView(정보 입력)와 outView(외출 작성) 모두 최상위 자식이 4개라
+       같은 스태거 규칙을 그대로 쓸 수 있다. */
+    .view.first-enter>* {
+      animation: fadeInUp 0.5s var(--toss-spring) backwards;
+    }
+
+    .view.first-enter>*:nth-child(1) {
+      animation-delay: .06s;
+    }
+
+    .view.first-enter>*:nth-child(2) {
+      animation-delay: .12s;
+    }
+
+    .view.first-enter>*:nth-child(3) {
+      animation-delay: .18s;
+    }
+
+    .view.first-enter>*:nth-child(4) {
+      animation-delay: .24s;
+    }
+
+    .view.first-enter>*:nth-child(n+5) {
+      animation-delay: .28s;
+    }
+
     .btn-simple {
       border: none;
       cursor: pointer;
@@ -3557,10 +3585,13 @@
         fallbackTimer = setTimeout(cleanup, 550);
 
       } else {
+        // 앱 최초 진입: 전환해올 이전 화면이 없으므로 슬라이드 대신
+        // 내부 요소들이 순서대로 부드럽게 떠오르는 진입 애니메이션을 준다.
         target.scrollTo(0, 0);
-        target.classList.add('active');
+        target.classList.add('active', 'first-enter');
         target.style.visibility = 'visible';
         target.style.transform = 'translate3d(0, 0, 0)';
+        setTimeout(() => { target.classList.remove('first-enter'); }, 900);
       }
 
       if (targetId === 'setupView') {
@@ -3940,22 +3971,9 @@
           if (draft.etcReason && $('etcReason')) { $('etcReason').value = draft.etcReason; if ($('etcReason')._autoGrow) $('etcReason')._autoGrow(); }
         }
       }
-      // restore time only if today and in the future
-      if (draft.targetTimeMs) {
-        const restored = new Date(draft.targetTimeMs);
-        const now = new Date();
-        const isToday = restored.getDate() === now.getDate() &&
-          restored.getMonth() === now.getMonth() &&
-          restored.getFullYear() === now.getFullYear();
-        const isFuture = restored.getTime() > now.getTime();
-        if (isToday && isFuture) {
-          targetTime = restored;
-          outTimeIsSet = true;
-          updateTimeDisplay();
-        } else {
-          resetTargetTime();
-        }
-      }
+      // 복귀 예정 시간은 탭을 닫았다 다시 들어오면 항상 '시간 미정'으로 되돌린다.
+      // (목적/사유 같은 나머지 임시저장 값만 복원하고, 시간은 매번 새로 정하게 한다.)
+      resetTargetTime();
     }
 
     function setPurposeTrigger(text) {
