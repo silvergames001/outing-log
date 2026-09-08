@@ -2871,7 +2871,11 @@
      <div class="label" style="margin-bottom:8px;">복귀 예정 시간</div>
      <div class="time-display-wrap" style="padding:4px 0 8px;">
       <div class="time-val" id="returnTimeVal">
-       <span class="cur-time-group"><span class="t-part valAmPm" id="valAmPm">오전</span> <span class="t-part" id="valHour">12</span> <span class="t-colon">:</span> <span class="t-part" id="valMinute">00</span></span><span class="time-flow" aria-hidden="true"><span class="time-flow-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></span></span><span class="ret-badge" id="returnBadge">시간 미정</span>
+       <span class="cur-time-group"><span class="t-part valAmPm" id="valAmPm">오전</span> <span class="t-part" id="valHour">12</span> <span class="t-colon">:</span> <span class="t-part" id="valMinute">00</span></span><span class="time-flow" aria-hidden="true"><span class="time-flow-ch">
+         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 6 15 12 9 18" />
+         </svg>
+        </span></span><span class="ret-badge" id="returnBadge">시간 미정</span>
       </div>
      </div>
      <div class="purpose-scroll-wrap" style="padding:4px;">
@@ -2946,7 +2950,11 @@
       <div class="label">새 복귀 예정 시간</div>
       <div class="time-display-wrap" style="padding: 4px 0 10px;">
        <div class="late-time-val" id="lateReturnTimeVal">
-        <span class="cur-time-group"><span class="t-part valAmPm" id="lateValAmPm">오전</span> <span class="t-part" id="lateValHour">12</span> <span class="t-colon">:</span> <span class="t-part" id="lateValMinute">00</span></span><span class="time-flow" aria-hidden="true"><span class="time-flow-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></span></span><span class="ret-badge" id="lateReturnBadge">시간 미정</span>
+        <span class="cur-time-group"><span class="t-part valAmPm" id="lateValAmPm">오전</span> <span class="t-part" id="lateValHour">12</span> <span class="t-colon">:</span> <span class="t-part" id="lateValMinute">00</span></span><span class="time-flow" aria-hidden="true"><span class="time-flow-ch">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+           <polyline points="9 6 15 12 9 18" />
+          </svg>
+         </span></span><span class="ret-badge" id="lateReturnBadge">시간 미정</span>
        </div>
       </div>
       <div class="purpose-scroll-wrap" style="padding:4px;">
@@ -2985,7 +2993,7 @@
    <section class="view done" id="doneView">
     <div class="ring" id="doneRing">
      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="4 12 9 17 20 6"></polyline>
+      <polyline points="4 12 9 17 20 6" />
      </svg>
     </div>
     <h2 id="doneTitle">제출 완료</h2>
@@ -3030,7 +3038,7 @@
     <div class="mgr-list" id="mgrList"></div>
     <div class="scroll-indicator" id="mgrScrollIndicator">
      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="6 9 12 15 18 9"></polyline>
+      <polyline points="6 9 12 15 18 9" />
      </svg>
     </div>
    </div>
@@ -3049,7 +3057,7 @@
     <div class="mgr-list" id="purposeList"></div>
     <div class="scroll-indicator" id="purposeScrollIndicator">
      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="6 9 12 15 18 9"></polyline>
+      <polyline points="6 9 12 15 18 9" />
      </svg>
     </div>
    </div>
@@ -3068,7 +3076,7 @@
     <div class="mgr-list" id="lateReasonList"></div>
     <div class="scroll-indicator" id="lateReasonScrollIndicator">
      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="6 9 12 15 18 9"></polyline>
+      <polyline points="6 9 12 15 18 9" />
      </svg>
     </div>
    </div>
@@ -4219,6 +4227,22 @@
         };
       };
 
+      // 이전 전환(예: 값을 빠르게 올리다가 초기화하고 다시 올리는 경우)이
+      // 아직 끝나지 않아 badge 안에 지난 전환의 임시 layer(.time-switch-old/new)가
+      // 남아있는 상태. 이걸 그대로 다음 전환의 재료로 쓰면 layer 안에 layer가
+      // 계속 중첩되면서 배지 구조 자체가 깨져 그 이후로는 값이 반영되지 않는
+      // 문제가 있었다. 진행 중이던 전환을 즉시 최종 상태로 확정하고 이어간다.
+      if (badge.querySelector('.time-switch-layer')) {
+        badge.style.transition = 'none';
+        badge.style.width = '';
+        badge.style.overflow = '';
+        badge.style.position = '';
+        badge.style.flex = '';
+        badge.innerHTML = oldIsSet
+          ? buildBadgeHtml(getTime().ampm, getTime().hour, getTime().minute, idPrefix)
+          : '시간 미정';
+      }
+
       // 설정 상태에서 숫자만 바뀌는 경우에는 별도의 레이아웃 애니메이션을
       // 만들지 않고 숫자 롤만 한 번 실행한다.
       if (isSet && oldIsSet && badge.querySelector('.t-part')) {
@@ -4226,9 +4250,28 @@
         const oldAmPm = badge.querySelector('#' + idPrefix + 'AmPm');
         const oldHour = badge.querySelector('#' + idPrefix + 'Hour');
         const oldMinute = badge.querySelector('#' + idPrefix + 'Minute');
-        if (oldAmPm) rollTextTo(oldAmPm, t.ampm, dir || 'up');
-        if (oldHour) rollTextTo(oldHour, t.hour, dir || 'up');
-        if (oldMinute) rollTextTo(oldMinute, t.minute, dir || 'up');
+
+        // '시간 미정 → 설정' 레이아웃 전환이 아직 끝나지 않아(약 375ms)
+        // 실제 id를 가진 요소가 아직 만들어지지 않은 상태에서 +/- 버튼이
+        // 연타된 경우. 이대로 두면 세 개의 if문이 전부 통과되지 못해
+        // 내부 값(targetTime)만 바뀌고 화면엔 아무 반영도 안 되는 문제가
+        // 있었다. 진행 중이던 전환을 즉시 최종 상태로 확정해 최신 값이
+        // 반드시 화면에 나타나도록 한다(이 드문 경우엔 롤링 애니메이션
+        // 없이 즉시 갱신되지만, 값이 누락되는 것보단 훨씬 낫다).
+        if (!oldAmPm || !oldHour || !oldMinute) {
+          timeTransitionToken.set(timeWrap, (timeTransitionToken.get(timeWrap) || 0) + 1);
+          badge.style.transition = 'none';
+          badge.style.width = '';
+          badge.style.overflow = '';
+          badge.style.position = '';
+          badge.style.flex = '';
+          badge.innerHTML = buildBadgeHtml(t.ampm, t.hour, t.minute, idPrefix);
+          return;
+        }
+
+        rollTextTo(oldAmPm, t.ampm, dir || 'up');
+        rollTextTo(oldHour, t.hour, dir || 'up');
+        rollTextTo(oldMinute, t.minute, dir || 'up');
         return;
       }
 
