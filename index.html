@@ -396,11 +396,26 @@
       overscroll-behavior-y: contain;
       transform: translate3d(100%, 0, 0);
       z-index: 1;
+      /* Full-screen scroll containers should not all be permanently promoted.
+         Permanent will-change on every view can create several large compositor
+         layers on iOS and increase memory/bandwidth pressure. Promotion is
+         enabled only while a view is actually participating in a transition. */
+      will-change: auto;
+    }
+
+    .view.is-transitioning {
       will-change: transform, opacity;
     }
 
     .view.setup {
       background: var(--card);
+    }
+
+    /* Hidden screens can contain infinite decorative animations. Pause them
+       while the screen is not visible so Safari does not spend frames on pixels
+       the user cannot see. The active screen keeps the original animations. */
+    .view:not(.active) * {
+      animation-play-state: paused !important;
     }
 
     .view.active {
@@ -704,7 +719,9 @@
       transition: color 0.5s var(--toss-spring), transform 0.45s var(--toss-spring), width var(--slide);
       overflow: visible;
       box-sizing: border-box;
-      will-change: width;
+      /* width is intentionally not promoted permanently; renderBadge()
+         animates it only during the short state change. */
+      will-change: auto;
       min-width: max-content;
     }
 
@@ -968,7 +985,7 @@
       padding: 32px 18px 21px;
 
       opacity: 0;
-      /* 스케일 효과 복구: 1.05 크기에서 시작 */
+      /* 원래 애니메이션: 1.05 크기에서 시작 (Android/데스크톱은 이 그대로 사용) */
       transform: translateY(120%) scale(1.05);
       visibility: hidden;
 
@@ -989,6 +1006,25 @@
       visibility: visible;
       /* 입장 애니메이션: 확 튀지 않게 감속하며 올라옴 */
       transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease, visibility 0.32s ease, background-color 0.4s ease;
+    }
+
+    /* ===== iOS(WebKit) 전용 최적화 =====
+       -webkit-touch-callout은 iOS의 모든 브라우저(Safari, Chrome-iOS 등,
+       전부 WebKit 렌더러 사용)에만 존재하는 속성이라 이 @supports로
+       "iOS인지"를 안전하게 구분할 수 있다. Android/데스크톱은 위의 원래
+       scale 애니메이션을 그대로 쓰고, iOS에서만 scale을 빼서 매 프레임
+       리래스터라이즈 비용을 없앤다 (border-radius + box-shadow가 있는
+       요소를 scale()과 함께 움직이면 WebKit이 감속 구간에서 버벅임). */
+    @supports (-webkit-touch-callout: none) {
+      .bottom-sheet {
+        transform: translate3d(0, 120%, 0);
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+      }
+
+      .bottom-sheet.show {
+        transform: translate3d(0, 0, 0);
+      }
     }
 
     .bottom-sheet::before {
@@ -2049,14 +2085,34 @@
       bottom: 0;
       width: 0;
       background: #e8f3ff;
-      border: 1px solid #3182f6;
+      border: 1.5px solid #3182f6;
       border-radius: 12px;
-      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+      box-shadow: 0 3px 8px rgba(49, 130, 246, 0.15);
       transform: translateX(var(--tx, 0px)) scale(var(--bg-scale, 1));
-      /* 속도를 미끄러지듯 자연스럽게 만들기 위해 bezier 곡선 수정 및 시간 증가 */
-      transition: transform var(--slide), width var(--slide);
+      /* width는 같은 탭 그룹 안에서 항상 동일(flex:1)하므로 애니메이션
+         대상에서 제외한다. width를 transition에 포함하면 프레임마다
+         레이아웃 리플로우가 발생해 iOS에서 이동 시 렉이 생겼다.
+         이제 transform만 애니메이션(합성 레이어, GPU 가속)한다. */
+      transition: transform var(--slide);
+      will-change: transform;
       z-index: 1;
       pointer-events: none; 
+    }
+
+    /* ── 진단용: iOS Safari(WebKit)에서만 적용되는 표준 iOS 감지 트릭.
+       다지점 linear() 스프링이 WebKit에서 메인스레드 재계산으로 빠져
+       무겁게 느껴지는지 확인하기 위해, 이 요소에 한해서만 단순한
+       cubic-bezier로 되돌려본다. 이걸로 무거움이 사라지면 원인 확정.
+       확인 후 유지할지, linear()로 되돌릴지 결정하면 된다. */
+    @supports (-webkit-touch-callout: none) {
+      .purpose-bg {
+        /* --slide의 원본 33포인트 linear() 스프링(감쇠 1.0·3.4Hz)을 같은
+           곡선 위에서 12포인트로 다운샘플링. 순수 cubic-bezier로 바꿨을 때
+           느껴지던 '순간이동'감(초반 급가속 후 일찍 멈추는 형태) 대신
+           끝까지 감속하는 원래 스프링 모양은 유지하면서, WebKit에서
+           포인트 수를 줄여 연산 부담만 낮춘다. */
+        transition: transform 0.36s linear(0, 0.1631, 0.4226, 0.6363, 0.7828, 0.8748, 0.9296, 0.9611, 0.9788, 0.9886, 0.9939, 1) !important;
+      }
     }
 
     .ptab {
@@ -3514,12 +3570,14 @@
           v.style.visibility = 'hidden';
           v.style.transition = '';
           v.style.boxShadow = '';
-          v.classList.remove('active');
+          v.classList.remove('active', 'is-transitioning');
         }
       });
 
       if (current && current !== target) {
         lockInput(true);
+        current.classList.add('is-transitioning');
+        target.classList.add('is-transitioning');
         current.style.pointerEvents = 'none';
         target.style.pointerEvents = 'none';
 
@@ -3563,7 +3621,8 @@
         }
 
         const cleanup = () => {
-          current.classList.remove('active');
+          current.classList.remove('active', 'is-transitioning');
+          target.classList.remove('is-transitioning');
           current.style.visibility = 'hidden';
           current.style.transition = '';
           current.style.transform = '';
@@ -3591,6 +3650,7 @@
         // 내부 요소들이 순서대로 부드럽게 떠오르는 진입 애니메이션을 준다.
         target.scrollTo(0, 0);
         target.classList.add('active', 'first-enter');
+        target.classList.remove('is-transitioning');
         target.style.visibility = 'visible';
         target.style.transform = 'translate3d(0, 0, 0)';
         setTimeout(() => { target.classList.remove('first-enter'); }, 900);
@@ -4715,10 +4775,36 @@
     function moveTabHighlight(target, bgId) {
       if (!target) return;
       const bg = $(bgId), wrap = target.closest('.purpose-scroll-wrap');
-      bg.style.width = target.offsetWidth + 'px';
-      bg.style.setProperty('--tx', `${target.offsetLeft}px`);
-      const scrollTarget = target.offsetLeft - (wrap.offsetWidth / 2) + (target.offsetWidth / 2);
-      wrap.scrollTo({ left: Math.max(0, scrollTarget), behavior: 'smooth' });
+      // 읽기(read)를 먼저 모두 끝낸 뒤 쓰기(write)를 한번에 처리해
+      // 레이아웃 스래싱(강제 동기 리플로우 반복)을 피한다. 특히 iOS에서
+      // 탭 이동 시 버벅임(렉)의 주요 원인이었다.
+      const w = target.offsetWidth;
+      const left = target.offsetLeft;
+      const wrapWidth = wrap.offsetWidth;
+      const needsScroll = wrap.scrollWidth > wrap.clientWidth + 1;
+      const scrollTarget = left - (wrapWidth / 2) + (w / 2);
+
+      // 쓰기(write)는 다음 프레임(rAF)으로 미뤄서 화면 갱신 주기(vsync)에
+      // 맞춘다. 터치업 핸들러 안에서 곧바로 스타일을 바꾸면 iOS에서
+      // 트랜지션이 그 프레임의 중간에 시작돼 첫 프레임이 튀는 경우가 있다.
+      requestAnimationFrame(() => {
+        // 같은 탭 그룹은 flex:1이라 폭이 항상 동일하다. 값이 실제로 바뀔
+        // 때만 width를 쓴다 — 매번 같은 값을 대입해도 강제 리플로우가
+        // 발생하기 때문에(이게 렉의 핵심 원인이었음) 반드시 가드한다.
+        if (bg.dataset.w !== String(w)) {
+          bg.style.width = w + 'px';
+          bg.dataset.w = w;
+        }
+        bg.style.setProperty('--tx', `${left}px`);
+
+        // 탭이 wrap 폭 안에 다 들어오면(5분/10분처럼 2개짜리 그룹) 스크롤
+        // 이동이 애초에 필요 없다. 불필요한 네이티브 smooth scrollTo를
+        // --tx 트랜지션과 동시에 돌리면 메인스레드를 다투게 되어 렉의
+        // 두번째 원인이 됐다.
+        if (needsScroll) {
+          wrap.scrollTo({ left: Math.max(0, scrollTarget), behavior: 'smooth' });
+        }
+      });
     }
 
     $('btnTimeMinus').onclick = () => stepTargetTime(-1);
@@ -5297,6 +5383,41 @@
         e.preventDefault();
       }, { passive: false });
     });
+  </script>
+  <script>
+    // ===== 진단용 프레임 타임 오버레이 =====
+    // URL 끝에 ?perf=1 을 붙여서 열었을 때만 작동한다 (평소엔 아무 영향 없음).
+    // 화면 우상단에 매 프레임 간격(ms)을 실시간으로 표시해서, 맥/데브툴 없이도
+    // 바텀시트를 열고 닫을 때 정확히 몇 ms짜리 프레임 드랍이 몇 번 발생하는지
+    // 눈으로 확인할 수 있게 한다. 16.7ms 근처면 60fps로 부드러운 것이고,
+    // 그보다 확 튀는 숫자(30ms, 50ms 등)가 보이면 그 순간이 버벅이는 지점이다.
+    if (location.search.includes('perf=1')) {
+      const box = document.createElement('div');
+      box.style.cssText = 'position:fixed;top:6px;right:6px;z-index:999999;background:rgba(0,0,0,0.75);color:#0f0;font:11px/1.4 monospace;padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre;';
+      document.body.appendChild(box);
+
+      let last = performance.now();
+      let worst = 0;
+      let worstLog = [];
+      let frames = 0;
+
+      function tick(now) {
+        const dt = now - last;
+        last = now;
+        frames++;
+        if (dt > worst) worst = dt;
+        if (dt > 33) { // 30fps 밑으로 떨어진 프레임만 기록 (약 2프레임 이상 드랍)
+          worstLog.push(Math.round(dt));
+          if (worstLog.length > 8) worstLog.shift();
+        }
+        box.textContent =
+          `frame: ${dt.toFixed(1)}ms\n` +
+          `worst: ${worst.toFixed(1)}ms\n` +
+          `drops: ${worstLog.join(', ')}`;
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
   </script>
  </body>
 </html>
