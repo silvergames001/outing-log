@@ -819,7 +819,7 @@
       font-size: 16px;
       word-break: keep-all;
       overflow-wrap: normal;
-      clip-path: inset(2px -80px 2px -80px);
+      clip-path: inset(-40px -80px -40px -80px);
       transition: none;
     }
 
@@ -3923,8 +3923,12 @@
     function openMgrSheet() {
       $('mgrPickerOverlay').classList.add('show');
       $('mgrPickerSheet').classList.add('show');
-      renderMgrList();
-      checkScrollIndicator('mgrList', 'mgrScrollIndicator');
+      // 목록을 새로 그리는 작업(반복 appendChild)과 스크롤 상태 측정은
+      // 등장 애니메이션과 같은 프레임에서 실행하지 않고 다음 프레임으로 미룬다.
+      requestAnimationFrame(() => {
+        renderMgrList();
+        checkScrollIndicator('mgrList', 'mgrScrollIndicator');
+      });
     }
     function closeMgrSheet() {
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -4003,8 +4007,12 @@
     function openPurposeSheet() {
       $('purposeOverlay').classList.add('show');
       $('purposeSheet').classList.add('show');
-      renderPurposeList();
-      checkScrollIndicator('purposeList', 'purposeScrollIndicator');
+      // 목록을 새로 그리는 작업과 스크롤 상태 측정은 등장 애니메이션과
+      // 같은 프레임에서 실행하지 않고 다음 프레임으로 미룬다.
+      requestAnimationFrame(() => {
+        renderPurposeList();
+        checkScrollIndicator('purposeList', 'purposeScrollIndicator');
+      });
     }
     function closePurposeSheet() {
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -4095,8 +4103,12 @@
     function openLateReasonSheet() {
       $('lateReasonOverlay').classList.add('show');
       $('lateReasonSheet').classList.add('show');
-      renderLateReasonList();
-      checkScrollIndicator('lateReasonList', 'lateReasonScrollIndicator');
+      // 목록을 새로 그리는 작업과 스크롤 상태 측정은 등장 애니메이션과
+      // 같은 프레임에서 실행하지 않고 다음 프레임으로 미룬다.
+      requestAnimationFrame(() => {
+        renderLateReasonList();
+        checkScrollIndicator('lateReasonList', 'lateReasonScrollIndicator');
+      });
     }
     function closeLateReasonSheet() {
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -4230,7 +4242,7 @@
       const DURATION = 360;
       const DIST = 24;
       const EASE = 'cubic-bezier(.22,.75,.2,1)';
-      const oldIsSet = badge.classList.contains('is-set');
+      let oldIsSet = badge.classList.contains('is-set');
 
       // 이미 '시간 미정' 상태인데 같은 상태로 초기화/되돌리기가 호출되면
       // 아무 애니메이션도 실행하지 않는다.
@@ -4249,16 +4261,44 @@
       // 아직 끝나지 않아 badge 안에 지난 전환의 임시 layer(.time-switch-old/new)가
       // 남아있는 상태. 이걸 그대로 다음 전환의 재료로 쓰면 layer 안에 layer가
       // 계속 중첩되면서 배지 구조 자체가 깨져 그 이후로는 값이 반영되지 않는
-      // 문제가 있었다. 진행 중이던 전환을 즉시 최종 상태로 확정하고 이어간다.
+      // 문제가 있었다.
+      //
+      // 되돌리는 기준은 '사라지고 있던 old layer'가 아니라 '이미 확정되어
+      // 화면에 올라오고 있던 new layer'여야 한다. badge.classList의 is-set은
+      // 레이아웃 분기 진입 시 이미 동기적으로 다음 상태로 바뀌어 있으므로
+      // (위에서 읽은 oldIsSet 값을 그대로 신뢰), old layer(예: '시간 미정')
+      // 내용으로 되돌리면 아직 확정된 값을 다시 '미정'으로 착각해 매번
+      // 그 등장 애니메이션이 처음부터 재생되는 문제가 있었다.
       if (badge.querySelector('.time-switch-layer')) {
+        const inFlightNewLayer = badge.querySelector('.time-switch-new');
+        let restoredHtml = null;
+
+        if (oldIsSet && inFlightNewLayer) {
+          const ampmEl = inFlightNewLayer.querySelector('.valAmPm');
+          const numEls = inFlightNewLayer.querySelectorAll('.t-part:not(.valAmPm)');
+          if (ampmEl && numEls.length === 2) {
+            // 직전 전환이 확정하려던 실제 값으로, 정식 id(Switch 접미사 없이)를
+            // 붙여 즉시 되돌린다. 이러면 바로 아래 '숫자만 롤' 경로가 정상
+            // 작동해서, 끊긴 지점의 값 → 이번 새 값으로 애니메이션이 끊김
+            // 없이 자연스럽게 이어진다.
+            restoredHtml = buildBadgeHtml(ampmEl.textContent, numEls[0].textContent, numEls[1].textContent, idPrefix);
+          }
+        }
+
+        if (restoredHtml === null) {
+          restoredHtml = oldIsSet
+            ? buildBadgeHtml(getTime().ampm, getTime().hour, getTime().minute, idPrefix)
+            : '시간 미정';
+        }
+
         badge.style.transition = 'none';
         badge.style.width = '';
         badge.style.overflow = '';
         badge.style.position = '';
         badge.style.flex = '';
-        badge.innerHTML = oldIsSet
-          ? buildBadgeHtml(getTime().ampm, getTime().hour, getTime().minute, idPrefix)
-          : '시간 미정';
+        badge.innerHTML = restoredHtml;
+        badge.classList.toggle('is-set', oldIsSet);
+        timeWrap.classList.toggle('is-time-set', oldIsSet);
       }
 
       // 설정 상태에서 숫자만 바뀌는 경우에는 별도의 레이아웃 애니메이션을
@@ -4613,10 +4653,15 @@
       $('pickerTitle').textContent = mode === 'late' ? '새 복귀 시간 선택' : '복귀 시간 선택';
       $('timePickerOverlay').classList.add('show'); $('timePickerSheet').classList.add('show');
 
-      const h = currTime.getHours(), m = currTime.getMinutes();
-      setWheelVal('wheelAmPm', h < 12 ? 'am' : 'pm');
-      setWheelVal('wheelHour', h % 12 === 0 ? 12 : h % 12);
-      setWheelVal('wheelMinute', m);
+      // scrollTop을 읽고 쓰는 작업은 강제로 동기 레이아웃을 유발한다.
+      // classList.add('show')와 같은 프레임에서 실행되면 등장 애니메이션의
+      // 첫 프레임이 막혀 iOS에서 버벅이므로, 다음 프레임으로 미룬다.
+      requestAnimationFrame(() => {
+        const h = currTime.getHours(), m = currTime.getMinutes();
+        setWheelVal('wheelAmPm', h < 12 ? 'am' : 'pm');
+        setWheelVal('wheelHour', h % 12 === 0 ? 12 : h % 12);
+        setWheelVal('wheelMinute', m);
+      });
     }
 
     $('btnCustomTime').addEventListener('click', () => openTimePicker(targetTime, 'out'));
@@ -4995,11 +5040,16 @@
       $('recoverOverlay').classList.add('show');
       $('recoverModal').classList.add('show');
       $('recoverReason').value = '';
-      if ($('recoverReason')._autoGrow) $('recoverReason')._autoGrow();
       // 마지막 외출 기록에서 가져온 시각을 그대로 쓴다 (없으면 '확인 안 됨')
       recTargetTime = autoTime || null;
       $('recTimeVal').classList.remove('err');
-      updateRecTimeDisplay();
+      // textarea 높이 재계산(_autoGrow)과 시간 텍스트 렌더링은 scrollHeight를
+      // 읽어 강제로 동기 레이아웃을 유발한다. 등장 애니메이션과 같은
+      // 프레임에서 실행되면 iOS에서 버벅이므로 다음 프레임으로 미룬다.
+      requestAnimationFrame(() => {
+        if ($('recoverReason')._autoGrow) $('recoverReason')._autoGrow();
+        updateRecTimeDisplay();
+      });
     }
 
     function closeRecover() {
