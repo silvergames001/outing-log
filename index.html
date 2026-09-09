@@ -943,8 +943,8 @@
       z-index: 1100;
       opacity: 0;
       visibility: hidden;
-      /* 사라질 때: 옅어짐 */
-      transition: opacity 0.3s cubic-bezier(0.45, 0, 0.55, 1), visibility 0.3s ease;
+      /* 사라질 때: 옅어짐 (바텀시트가 다 내려가는 시점(0.45s)에 맞춰 동기화) */
+      transition: opacity 0.45s cubic-bezier(0.45, 0, 0.55, 1), visibility 0.45s ease;
       will-change: opacity;
       transform: translateZ(0);
     }
@@ -972,8 +972,8 @@
       transform: translateY(120%) scale(1.05);
       visibility: hidden;
 
-      /* 퇴장 애니메이션: 차분하게 가속하며 사라짐 */
-      transition: transform 0.25s cubic-bezier(0.3, 0, 0.1, 1), opacity 0.2s ease, visibility 0.25s ease, background-color 0.4s ease;
+      /* 퇴장 애니메이션: 차분하게 가속하며 사라짐 (조금 느리게) */
+      transition: transform 0.45s cubic-bezier(0.3, 0, 0.1, 1), opacity 0.35s ease, visibility 0.45s ease, background-color 0.4s ease;
 
       display: flex;
       flex-direction: column;
@@ -1041,6 +1041,7 @@
       right: 12px;
       height: 40px;
       background: var(--blue-light);
+      border: 1px solid #3182f6;
       border-radius: 10px;
       pointer-events: none;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
@@ -2048,6 +2049,7 @@
       bottom: 0;
       width: 0;
       background: #e8f3ff;
+      border: 1px solid #3182f6;
       border-radius: 12px;
       box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
       transform: translateX(var(--tx, 0px)) scale(var(--bg-scale, 1));
@@ -3794,8 +3796,8 @@
     function updateSpan(id, newValue) { const el = $(id); if (!el || el.textContent === newValue) return; el.textContent = newValue; }
 
     // set auto reset hour
-    const AUTO_RESET_HOUR = 0;   // 22 = 오후 10시
-    const AUTO_RESET_MINUTE = 6;  // 0분
+    const AUTO_RESET_HOUR = 22;   // 오후 10시
+    const AUTO_RESET_MINUTE = 0;
 
     function shouldAutoReset() {
       if (store.status !== 'out') return false;
@@ -3922,11 +3924,14 @@
 
     function openMgrSheet() {
       $('mgrPickerOverlay').classList.add('show');
+      // 목록을 그리는 작업은 시트의 실제 높이(등장 애니메이션이 시작하는
+      // translateY(120%) 기준값)에 영향을 주므로, classList.add('show')
+      // 전에 먼저 끝내둔다. 그래야 처음 열든 다시 열든 항상 같은 높이에서
+      // 애니메이션이 시작한다. scrollHeight를 읽는(강제 레이아웃 유발)
+      // 스크롤 인디케이터 체크만 다음 프레임으로 미룬다.
+      renderMgrList();
       $('mgrPickerSheet').classList.add('show');
-      // 목록을 새로 그리는 작업(반복 appendChild)과 스크롤 상태 측정은
-      // 등장 애니메이션과 같은 프레임에서 실행하지 않고 다음 프레임으로 미룬다.
       requestAnimationFrame(() => {
-        renderMgrList();
         checkScrollIndicator('mgrList', 'mgrScrollIndicator');
       });
     }
@@ -4006,11 +4011,12 @@
 
     function openPurposeSheet() {
       $('purposeOverlay').classList.add('show');
+      // 목록을 그리는 작업은 시트 높이에 영향을 주므로 show 클래스를
+      // 붙이기 전에 먼저 끝낸다(처음/두 번째 열 때 시작 위치가 달라지는
+      // 문제 방지). 스크롤 인디케이터 체크만 다음 프레임으로 미룬다.
+      renderPurposeList();
       $('purposeSheet').classList.add('show');
-      // 목록을 새로 그리는 작업과 스크롤 상태 측정은 등장 애니메이션과
-      // 같은 프레임에서 실행하지 않고 다음 프레임으로 미룬다.
       requestAnimationFrame(() => {
-        renderPurposeList();
         checkScrollIndicator('purposeList', 'purposeScrollIndicator');
       });
     }
@@ -4102,11 +4108,12 @@
 
     function openLateReasonSheet() {
       $('lateReasonOverlay').classList.add('show');
+      // 목록을 그리는 작업은 시트 높이에 영향을 주므로 show 클래스를
+      // 붙이기 전에 먼저 끝낸다(처음/두 번째 열 때 시작 위치가 달라지는
+      // 문제 방지). 스크롤 인디케이터 체크만 다음 프레임으로 미룬다.
+      renderLateReasonList();
       $('lateReasonSheet').classList.add('show');
-      // 목록을 새로 그리는 작업과 스크롤 상태 측정은 등장 애니메이션과
-      // 같은 프레임에서 실행하지 않고 다음 프레임으로 미룬다.
       requestAnimationFrame(() => {
-        renderLateReasonList();
         checkScrollIndicator('lateReasonList', 'lateReasonScrollIndicator');
       });
     }
@@ -5038,18 +5045,15 @@
 
     function openRecover(autoTime) {
       $('recoverOverlay').classList.add('show');
-      $('recoverModal').classList.add('show');
       $('recoverReason').value = '';
       // 마지막 외출 기록에서 가져온 시각을 그대로 쓴다 (없으면 '확인 안 됨')
       recTargetTime = autoTime || null;
       $('recTimeVal').classList.remove('err');
-      // textarea 높이 재계산(_autoGrow)과 시간 텍스트 렌더링은 scrollHeight를
-      // 읽어 강제로 동기 레이아웃을 유발한다. 등장 애니메이션과 같은
-      // 프레임에서 실행되면 iOS에서 버벅이므로 다음 프레임으로 미룬다.
-      requestAnimationFrame(() => {
-        if ($('recoverReason')._autoGrow) $('recoverReason')._autoGrow();
-        updateRecTimeDisplay();
-      });
+      // textarea 높이 재계산(_autoGrow)은 팝업 자체의 높이(등장 애니메이션의
+      // 시작 기준값)에 영향을 주므로 show 클래스를 붙이기 전에 먼저 끝낸다.
+      if ($('recoverReason')._autoGrow) $('recoverReason')._autoGrow();
+      updateRecTimeDisplay();
+      $('recoverModal').classList.add('show');
     }
 
     function closeRecover() {
