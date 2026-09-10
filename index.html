@@ -1001,13 +1001,13 @@
        요소를 scale()과 함께 움직이면 WebKit이 감속 구간에서 버벅임). */
     @supports (-webkit-touch-callout: none) {
       .bottom-sheet {
-        transform: translate3d(0, 120%, 0);
+        transform: translate3d(0, 120%, 0) scale(1.05);
         -webkit-backface-visibility: hidden;
         backface-visibility: hidden;
       }
 
       .bottom-sheet.show {
-        transform: translate3d(0, 0, 0);
+        transform: translate3d(0, 0, 0) scale(1);
       }
     }
 
@@ -2477,8 +2477,8 @@
       visibility: hidden;
       /* 아래에서 위로 올라오는 시작 위치 (스케일 없음) */
       transform: translate(-50%, -50%) translateY(260px);
-      /* 퇴장: 차분하게 가속하며 아래로 사라짐 (바텀시트와 동일 커브) */
-      transition: transform 0.25s cubic-bezier(0.3, 0, 0.1, 1), opacity 0.2s ease, visibility 0.25s ease, max-height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+      /* 퇴장: 차분하게 가속하며 아래로 사라짐 (바텀시트와 동일 커브, 속도는 좀 더 느리게) */
+      transition: transform 0.45s cubic-bezier(0.3, 0, 0.1, 1), opacity 0.35s ease, visibility 0.45s ease, max-height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
     .center-modal.show {
