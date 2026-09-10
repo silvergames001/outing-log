@@ -2106,12 +2106,23 @@
        확인 후 유지할지, linear()로 되돌릴지 결정하면 된다. */
     @supports (-webkit-touch-callout: none) {
       .purpose-bg {
-        /* --slide의 원본 33포인트 linear() 스프링(감쇠 1.0·3.4Hz)을 같은
-           곡선 위에서 12포인트로 다운샘플링. 순수 cubic-bezier로 바꿨을 때
-           느껴지던 '순간이동'감(초반 급가속 후 일찍 멈추는 형태) 대신
-           끝까지 감속하는 원래 스프링 모양은 유지하면서, WebKit에서
-           포인트 수를 줄여 연산 부담만 낮춘다. */
-        transition: transform 0.36s linear(0, 0.1631, 0.4226, 0.6363, 0.7828, 0.8748, 0.9296, 0.9611, 0.9788, 0.9886, 0.9939, 1) !important;
+        /* linear() 다지점 곡선을 걷어내고 순수 cubic-bezier로 완전히
+           교체. 시작 지점에 가속 구간을 두지 않고(터치 순간 바로
+           최고 속도로 출발) 끝에서만 부드럽게 감속하며 멈추는 형태.
+           이 파일의 --toss-nav(cubic-bezier(0,0,0.2,1))와 같은 곡선. */
+        transition: transform 0.31s cubic-bezier(0, 0, 0.2, 1) !important;
+        /* 레이어 승격을 will-change 뿐 아니라 명시적으로도 강제해서
+           구형 WebKit에서도 확실히 GPU 합성 레이어로 올라가게 한다. */
+        -webkit-backface-visibility: hidden;
+        /* 이 박스 내부의 리페인트/리플로우가 바깥으로 전파되지
+           않도록 격리 — 애니메이션 중 브라우저가 검사할 범위를 줄인다. */
+        contain: layout paint style;
+      }
+      /* 60Hz(비-ProMotion) 아이폰: duration을 더 줄여서 총 프레임 수
+         자체를 줄인다 — 짧을수록 드랍될 기회가 적어진다. 곡선 모양은
+         동일하게 유지. */
+      html.fps-60 .purpose-bg {
+        transition: transform 0.31s cubic-bezier(0, 0, 0.2, 1) !important;
       }
     }
 
@@ -3216,6 +3227,44 @@
   <iframe name="ghost2" style="display:none" title="submit2"></iframe>
   <form id="gform2" method="POST" target="ghost2" style="display:none"></form>
   <script>
+    // ── 60Hz(비-ProMotion) 아이폰 감지 ──────────────────────────
+    // iOS는 화면 주사율을 JS에 직접 노출하지 않으므로, rAF 프레임
+    // 간격을 실측해서 추정한다.
+    //
+    // median이 아니라 '표본 중 최소 간격'으로 판정하는 이유:
+    // 프레임 드랍은 간격을 늘릴 수만 있지 줄일 수는 없다 — 60Hz
+    // 디스플레이는 물리적으로 16.6ms보다 빨리 못 그리고, 120Hz는
+    // 최소 8.3ms까지 찍을 수 있다. 즉 최소 간격이 사실상 그 기기의
+    // '하한선(진짜 주사율)'이다. median을 쓰면 측정 시점(페이지 로딩
+    // 직후, 가장 무거운 시점)에 드랍이 여러 번 섞였을 때 절반 이상이
+    // 오염되어 120Hz 기기를 60Hz로 잘못 판정할 수 있는데, 최소값
+    // 방식은 드랍이 섞여도 진짜 최소 간격 하나만 제대로 찍히면
+    // 영향을 받지 않는다.
+    (function detectRefreshRate() {
+      let last = null;
+      const samples = [];
+      const NEEDED = 24; // 표본을 넉넉히 모아 최소값의 신뢰도를 높인다
+      function tick(now) {
+        if (last !== null) samples.push(now - last);
+        last = now;
+        if (samples.length < NEEDED) {
+          requestAnimationFrame(tick);
+        } else {
+          samples.sort((a, b) => a - b);
+          // 아주 드물게 rAF 타임스탬프가 튀는 경우를 대비해 최소값
+          // 대신 2번째로 작은 값을 사용 — 단일 이상치에 대한 안전판.
+          const floor = samples[1];
+          const is60 = floor > 12;
+          if (is60) {
+            document.documentElement.classList.add('fps-60');
+          }
+        }
+      }
+      // 로드 직후 가장 무거운 시점을 피해 살짝 늦춰서 측정 시작
+      // (그래도 median이 아니라 최소값 방식이라 크게 민감하진 않다).
+      setTimeout(() => requestAnimationFrame(tick), 200);
+    })();
+
     const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfYUnIKVNOi2BS0YwopYOkUWczDe2l7zGPp8g04dwmyzDi04Q/formResponse";
 
     const E = {
@@ -3502,6 +3551,12 @@
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
         el.classList.add('pressed');
+        // 클래스 추가 직후 강제로 레이아웃을 한 번 읽어서 스타일 반영을
+        // 동기적으로 확정시킨다(강제 리플로우). 이게 없으면 페이지가
+        // 바쁠 때 이 스타일 변경이 다른 렌더링 작업과 묶여 다음 프레임
+        // 으로 밀릴 수 있어, 아주 짧고 가벼운 터치는 눌림이 화면에
+        // 안 보이고 지나가버리는 경우가 생긴다.
+        void el.getBoundingClientRect();
       }, { passive: true });
 
       document.addEventListener('touchmove', e => {
@@ -4795,7 +4850,10 @@
           bg.style.width = w + 'px';
           bg.dataset.w = w;
         }
-        bg.style.setProperty('--tx', `${left}px`);
+        // 소수점 좌표(예: 157.34px)는 border-radius/border 가장자리의
+        // 안티앨리어싱을 매 프레임 다시 계산하게 만들어 저전력 기기
+        // (특히 60Hz 구형 아이폰)에서 부담이 된다. 정수 픽셀로 스냅.
+        bg.style.setProperty('--tx', `${Math.round(left)}px`);
 
         // 탭이 wrap 폭 안에 다 들어오면(5분/10분처럼 2개짜리 그룹) 스크롤
         // 이동이 애초에 필요 없다. 불필요한 네이티브 smooth scrollTo를
