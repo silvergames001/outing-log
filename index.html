@@ -160,9 +160,6 @@
       transform-origin: center;
       transform: rotate(-5deg) translateZ(0);
       animation: cardFloatMini 4s ease-in-out infinite;
-      /* 자체 레이어로 승격시켜 iOS(WebKit)가 drop-shadow 필터를 매 프레임
-         다시 래스터화하지 않고 캐시된 레이어를 이동만 시키게 한다. */
-      will-change: transform;
     }
 
     @keyframes cardFloatMini {
@@ -394,17 +391,11 @@
       pointer-events: none;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: contain;
+      scroll-behavior: smooth;
       transform: translate3d(100%, 0, 0);
       z-index: 1;
-      /* Full-screen scroll containers should not all be permanently promoted.
-         Permanent will-change on every view can create several large compositor
-         layers on iOS and increase memory/bandwidth pressure. Promotion is
-         enabled only while a view is actually participating in a transition. */
-      will-change: auto;
-    }
-
-    .view.is-transitioning {
-      will-change: transform, opacity;
+      /* Full-screen scroll containers are left to the browser's compositor
+         heuristics instead of forcing persistent GPU layers. */
     }
 
     .view.setup {
@@ -475,7 +466,7 @@
       position: fixed;
       top: -60px;
       left: 50%;
-      transform: translateX(-50%);
+      transform: translate3d(-50%, -84px, 0);
       background: rgba(51, 61, 75, 0.9);
       color: #ffffff;
       padding: 14px 24px;
@@ -488,12 +479,11 @@
       pointer-events: none;
       opacity: 0;
       overflow: hidden;
-      will-change: width, top, opacity;
-      transition: top var(--panel), opacity 0.3s;
+      transition: transform var(--panel), opacity 0.3s;
     }
 
     .toast.show {
-      top: max(24px, env(safe-area-inset-top));
+      transform: translate3d(-50%, max(24px, env(safe-area-inset-top)), 0);
       opacity: 1;
     }
 
@@ -642,7 +632,6 @@
       transform-origin: center;
       transform: rotate(-5deg);
       animation: cardFloat 4s ease-in-out infinite;
-      will-change: transform;
     }
 
     @keyframes cardFloat {
@@ -721,7 +710,6 @@
       box-sizing: border-box;
       /* width is intentionally not promoted permanently; renderBadge()
          animates it only during the short state change. */
-      will-change: auto;
       min-width: max-content;
     }
 
@@ -740,7 +728,6 @@
     .t-part {
       display: inline-block;
       position: relative;
-      will-change: transform, opacity;
     }
 
     #valHour,
@@ -749,7 +736,6 @@
       width: 2ch;
       display: inline-block;
       transition: all var(--slide);
-      will-change: width;
     }
 
     .valAmPm {
@@ -962,7 +948,6 @@
       visibility: hidden;
       /* 사라질 때: 옅어짐 (바텀시트가 다 내려가는 시점(0.45s)에 맞춰 동기화) */
       transition: opacity 0.45s cubic-bezier(0.45, 0, 0.55, 1), visibility 0.45s ease;
-      will-change: opacity;
       transform: translateZ(0);
     }
 
@@ -996,7 +981,6 @@
       flex-direction: column;
       gap: 20px;
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-      will-change: transform, opacity;
     }
 
     .bottom-sheet.show {
@@ -1115,11 +1099,6 @@
       color: #b0b8c1;
       scroll-snap-align: center;
       transition: color 0.15s ease, transform var(--press-out);
-      /* will-change 제거: 시/분/오전오후 휠을 합치면 최대 78개 항목이
-         생기는데, 각각을 개별 레이어로 승격시키면 iOS에서 메모리 압박이
-         커져 다른 애니메이션과 겹칠 때 소프트웨어 렌더링으로 강등되기
-         쉬웠다. 실제로 활성화된 1개 항목만 JS가 style을 직접 바꾸므로
-         will-change 없이도 동작에는 문제없다. */
     }
 
     .chips {
@@ -1374,7 +1353,6 @@
       display: block;
       width: 100%;
       line-height: 20px;
-      will-change: transform, opacity;
     }
 
     .mgr-trigger .ph {
@@ -2085,45 +2063,17 @@
       bottom: 0;
       width: 0;
       background: #e8f3ff;
-      border: 1.5px solid #3182f6;
+      border: 1px solid #3182f6;
       border-radius: 12px;
-      box-shadow: 0 3px 8px rgba(49, 130, 246, 0.15);
+      box-shadow: 0 2px 7px rgba(49, 130, 246, 0.12);
       transform: translateX(var(--tx, 0px)) scale(var(--bg-scale, 1));
       /* width는 같은 탭 그룹 안에서 항상 동일(flex:1)하므로 애니메이션
          대상에서 제외한다. width를 transition에 포함하면 프레임마다
          레이아웃 리플로우가 발생해 iOS에서 이동 시 렉이 생겼다.
          이제 transform만 애니메이션(합성 레이어, GPU 가속)한다. */
       transition: transform var(--slide);
-      will-change: transform;
       z-index: 1;
       pointer-events: none; 
-    }
-
-    /* ── 진단용: iOS Safari(WebKit)에서만 적용되는 표준 iOS 감지 트릭.
-       다지점 linear() 스프링이 WebKit에서 메인스레드 재계산으로 빠져
-       무겁게 느껴지는지 확인하기 위해, 이 요소에 한해서만 단순한
-       cubic-bezier로 되돌려본다. 이걸로 무거움이 사라지면 원인 확정.
-       확인 후 유지할지, linear()로 되돌릴지 결정하면 된다. */
-    @supports (-webkit-touch-callout: none) {
-      .purpose-bg {
-        /* linear() 다지점 곡선을 걷어내고 순수 cubic-bezier로 완전히
-           교체. 시작 지점에 가속 구간을 두지 않고(터치 순간 바로
-           최고 속도로 출발) 끝에서만 부드럽게 감속하며 멈추는 형태.
-           이 파일의 --toss-nav(cubic-bezier(0,0,0.2,1))와 같은 곡선. */
-        transition: transform 0.31s cubic-bezier(0, 0, 0.2, 1) !important;
-        /* 레이어 승격을 will-change 뿐 아니라 명시적으로도 강제해서
-           구형 WebKit에서도 확실히 GPU 합성 레이어로 올라가게 한다. */
-        -webkit-backface-visibility: hidden;
-        /* 이 박스 내부의 리페인트/리플로우가 바깥으로 전파되지
-           않도록 격리 — 애니메이션 중 브라우저가 검사할 범위를 줄인다. */
-        contain: layout paint style;
-      }
-      /* 60Hz(비-ProMotion) 아이폰: duration을 더 줄여서 총 프레임 수
-         자체를 줄인다 — 짧을수록 드랍될 기회가 적어진다. 곡선 모양은
-         동일하게 유지. */
-      html.fps-60 .purpose-bg {
-        transition: transform 0.31s cubic-bezier(0, 0, 0.2, 1) !important;
-      }
     }
 
     .ptab {
@@ -2500,7 +2450,6 @@
       opacity: 0;
       visibility: hidden;
       transition: opacity 0.3s cubic-bezier(0.45, 0, 0.55, 1), visibility 0.3s ease;
-      will-change: opacity;
       transform: translateZ(0);
     }
 
@@ -2530,7 +2479,6 @@
       transform: translate(-50%, -50%) translateY(260px);
       /* 퇴장: 차분하게 가속하며 아래로 사라짐 (바텀시트와 동일 커브) */
       transition: transform 0.25s cubic-bezier(0.3, 0, 0.1, 1), opacity 0.2s ease, visibility 0.25s ease, max-height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-      will-change: transform, opacity;
     }
 
     .center-modal.show {
@@ -2786,8 +2734,6 @@
       filter: drop-shadow(2px 5px 8px rgba(240, 68, 82, 0.35)) drop-shadow(4px 12px 24px rgba(240, 68, 82, 0.42));
       transform-origin: center;
       animation: lockFloat 3.8s ease-in-out infinite;
-      /* drop-shadow가 2겹이라 더 무거움 - 레이어로 승격해 필터 재계산 방지 */
-      will-change: transform;
     }
 
     @keyframes lockFloat {
@@ -3227,44 +3173,6 @@
   <iframe name="ghost2" style="display:none" title="submit2"></iframe>
   <form id="gform2" method="POST" target="ghost2" style="display:none"></form>
   <script>
-    // ── 60Hz(비-ProMotion) 아이폰 감지 ──────────────────────────
-    // iOS는 화면 주사율을 JS에 직접 노출하지 않으므로, rAF 프레임
-    // 간격을 실측해서 추정한다.
-    //
-    // median이 아니라 '표본 중 최소 간격'으로 판정하는 이유:
-    // 프레임 드랍은 간격을 늘릴 수만 있지 줄일 수는 없다 — 60Hz
-    // 디스플레이는 물리적으로 16.6ms보다 빨리 못 그리고, 120Hz는
-    // 최소 8.3ms까지 찍을 수 있다. 즉 최소 간격이 사실상 그 기기의
-    // '하한선(진짜 주사율)'이다. median을 쓰면 측정 시점(페이지 로딩
-    // 직후, 가장 무거운 시점)에 드랍이 여러 번 섞였을 때 절반 이상이
-    // 오염되어 120Hz 기기를 60Hz로 잘못 판정할 수 있는데, 최소값
-    // 방식은 드랍이 섞여도 진짜 최소 간격 하나만 제대로 찍히면
-    // 영향을 받지 않는다.
-    (function detectRefreshRate() {
-      let last = null;
-      const samples = [];
-      const NEEDED = 24; // 표본을 넉넉히 모아 최소값의 신뢰도를 높인다
-      function tick(now) {
-        if (last !== null) samples.push(now - last);
-        last = now;
-        if (samples.length < NEEDED) {
-          requestAnimationFrame(tick);
-        } else {
-          samples.sort((a, b) => a - b);
-          // 아주 드물게 rAF 타임스탬프가 튀는 경우를 대비해 최소값
-          // 대신 2번째로 작은 값을 사용 — 단일 이상치에 대한 안전판.
-          const floor = samples[1];
-          const is60 = floor > 12;
-          if (is60) {
-            document.documentElement.classList.add('fps-60');
-          }
-        }
-      }
-      // 로드 직후 가장 무거운 시점을 피해 살짝 늦춰서 측정 시작
-      // (그래도 median이 아니라 최소값 방식이라 크게 민감하진 않다).
-      setTimeout(() => requestAnimationFrame(tick), 200);
-    })();
-
     const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfYUnIKVNOi2BS0YwopYOkUWczDe2l7zGPp8g04dwmyzDi04Q/formResponse";
 
     const E = {
@@ -3551,12 +3459,6 @@
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
         el.classList.add('pressed');
-        // 클래스 추가 직후 강제로 레이아웃을 한 번 읽어서 스타일 반영을
-        // 동기적으로 확정시킨다(강제 리플로우). 이게 없으면 페이지가
-        // 바쁠 때 이 스타일 변경이 다른 렌더링 작업과 묶여 다음 프레임
-        // 으로 밀릴 수 있어, 아주 짧고 가벼운 터치는 눌림이 화면에
-        // 안 보이고 지나가버리는 경우가 생긴다.
-        void el.getBoundingClientRect();
       }, { passive: true });
 
       document.addEventListener('touchmove', e => {
@@ -3579,21 +3481,20 @@
       }, { passive: true });
     })();
 
-    function smoothScrollTo(targetY) {
+function smoothScrollTo(targetY) {
       const v = document.querySelector('.view.active');
       if (!v) return;
-      const startY = v.scrollTop;
-      const distance = targetY - startY;
-      const startTime = performance.now();
+      const maxY = Math.max(0, v.scrollHeight - v.clientHeight);
+      const y = Math.max(0, Math.min(targetY, maxY));
 
-      function step(currentTime) {
-        let progress = (currentTime - startTime) / 400;
-        if (progress > 1) progress = 1;
-        const ease = 1 - Math.pow(1 - progress, 4);
-        v.scrollTop = startY + distance * ease;
-        if (progress < 1) requestAnimationFrame(step);
+      // Let the browser own scrolling instead of writing scrollTop every frame.
+      // This removes a main-thread JS animation loop and lets iOS/WebKit keep
+      // touch scrolling and scrolling animation on its optimized path.
+      try {
+        v.scrollTo({ top: y, behavior: 'smooth' });
+      } catch (_) {
+        v.scrollTop = y;
       }
-      requestAnimationFrame(step);
     }
 
     const springConfig = { tension: 350, friction: 32 };
@@ -3802,7 +3703,7 @@
 
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => {
-        toast.style.transition = 'top 0.5s ease, opacity 0.3s ease';
+        toast.style.transition = 'transform 0.5s ease, opacity 0.3s ease';
         toast.classList.remove('show');
         setTimeout(() => {
           if (!toast.classList.contains('show')) toast.style.width = 'auto';
@@ -4484,7 +4385,6 @@
           // 설정 시간으로 들어올 때만 transform scale(0.5)에서 시작해 32px까지 커진다.
           'font-size:' + (layerIsSet ? '32px' : '16px'),
           'color:' + (layerIsSet ? 'var(--blue-main)' : 'var(--muted)'),
-          'will-change:transform,opacity'
         ].join(';');
         layer.querySelectorAll('.t-part').forEach(el => {
           el.style.whiteSpace = 'nowrap';
@@ -4836,33 +4736,11 @@
       const w = target.offsetWidth;
       const left = target.offsetLeft;
       const wrapWidth = wrap.offsetWidth;
-      const needsScroll = wrap.scrollWidth > wrap.clientWidth + 1;
       const scrollTarget = left - (wrapWidth / 2) + (w / 2);
 
-      // 쓰기(write)는 다음 프레임(rAF)으로 미뤄서 화면 갱신 주기(vsync)에
-      // 맞춘다. 터치업 핸들러 안에서 곧바로 스타일을 바꾸면 iOS에서
-      // 트랜지션이 그 프레임의 중간에 시작돼 첫 프레임이 튀는 경우가 있다.
-      requestAnimationFrame(() => {
-        // 같은 탭 그룹은 flex:1이라 폭이 항상 동일하다. 값이 실제로 바뀔
-        // 때만 width를 쓴다 — 매번 같은 값을 대입해도 강제 리플로우가
-        // 발생하기 때문에(이게 렉의 핵심 원인이었음) 반드시 가드한다.
-        if (bg.dataset.w !== String(w)) {
-          bg.style.width = w + 'px';
-          bg.dataset.w = w;
-        }
-        // 소수점 좌표(예: 157.34px)는 border-radius/border 가장자리의
-        // 안티앨리어싱을 매 프레임 다시 계산하게 만들어 저전력 기기
-        // (특히 60Hz 구형 아이폰)에서 부담이 된다. 정수 픽셀로 스냅.
-        bg.style.setProperty('--tx', `${Math.round(left)}px`);
-
-        // 탭이 wrap 폭 안에 다 들어오면(5분/10분처럼 2개짜리 그룹) 스크롤
-        // 이동이 애초에 필요 없다. 불필요한 네이티브 smooth scrollTo를
-        // --tx 트랜지션과 동시에 돌리면 메인스레드를 다투게 되어 렉의
-        // 두번째 원인이 됐다.
-        if (needsScroll) {
-          wrap.scrollTo({ left: Math.max(0, scrollTarget), behavior: 'smooth' });
-        }
-      });
+      bg.style.width = w + 'px';
+      bg.style.setProperty('--tx', `${left}px`);
+      wrap.scrollTo({ left: Math.max(0, scrollTarget), behavior: 'smooth' });
     }
 
     $('btnTimeMinus').onclick = () => stepTargetTime(-1);
