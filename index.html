@@ -3,22 +3,27 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#f9fafb">
+  <meta name="theme-color" content="#fbfbfb">
   <title>외출기입대장-중계EPX</title>
   <style>
     :root {
-      --bg-main: #f9fafb;
+      --bg-main: #fbfbfb;
       --card: #ffffff;
       --line: #e5e8eb;
+      /* 직접 설정 버튼, 5분/10분 단위 트랙, 이름 입력, 매니저/목적 선택
+         버튼 등 중립 회색 UI에 공통으로 쓰는 채우기색. 사용자가 올려준
+         "명도가 다 달라요" 참고 이미지의 grey100 스와치에서 실측한 값
+         (대비 1.1:1)을 그대로 사용. */
+      --gray-fill: #f3f4f6;
 
       --ink: #333d4b;
       --muted: #8b95a1;
 
       --blue-main: #3182f6;
-      --blue-light: #e8f3ff;
+      --blue-light: #c9e4ff;
 
       --error: #f04452;
-      --error-bg: #feeef0;
+      --error-bg: #fed6d6;
 
       /* ── 모션 (근사 곡선 / 아래 @supports에서 스프링으로 교체) ── */
       --toss-spring: cubic-bezier(0.16, 1, 0.3, 1);
@@ -122,7 +127,7 @@
       left: 0;
       width: 100%;
       height: 24px;
-      background: linear-gradient(to bottom, var(--bg-main), rgba(249, 250, 251, 0));
+      background: linear-gradient(to bottom, var(--bg-main), rgba(251, 251, 251, 0));
       pointer-events: none;
     }
 
@@ -359,7 +364,7 @@
     .stepper-btn.pressed,
     .stepper-edit:active,
     .stepper-edit.pressed {
-      transform: scale(var(--press-scale-md)) !important; 
+      transform: scale(var(--press-scale-md)) !important;
       filter: brightness(0.92) !important;
       transition: transform var(--press-in), filter var(--press-in),
                   background-color var(--press-in), border-color var(--press-in) !important;
@@ -538,7 +543,7 @@
     }
 
     .err-bg {
-      background-color: #feeef0 !important;
+      background-color: #fed6d6 !important;
       border-color: transparent !important;
       transition: background-color 0.2s ease, border-color 0.2s ease !important;
     }
@@ -548,7 +553,7 @@
 
       0%,
       100% {
-        background-color: #f2f4f6;
+        background-color: var(--gray-fill);
         color: var(--ink);
         box-shadow: none;
       }
@@ -562,7 +567,7 @@
 
       40%,
       80% {
-        background-color: #f2f4f6;
+        background-color: var(--gray-fill);
         color: var(--ink);
         box-shadow: none;
       }
@@ -811,6 +816,7 @@
       min-width: max-content;
       overflow: visible;
       position: relative;
+      z-index: 0;
       height: 40px;
       align-self: center;
       box-sizing: border-box;
@@ -829,6 +835,46 @@
     .ret-badge.is-set {
       font-size: 32px;
       color: var(--blue-main);
+    }
+
+    /* 에러 배경은 배지 자신의 padding/margin이 아니라 절대 위치 의사요소로
+       그린다. 배지의 실제 박스 크기(offsetWidth)는 +/- 버튼 애니메이션에서
+       폭 변화량을 계산하는 기준으로 그대로 쓰이는데, 여기에 padding을
+       더하면 그 폭이 부풀어 애니메이션이 끝난 뒤 원래 레이아웃 폭으로
+       되돌아가면서 '직접 설정' 버튼이 옆으로 툭 튀는 문제가 생긴다.
+
+       의사요소는 항상 DOM에 존재하되 opacity로만 켜고 끈다 - .err일 때만
+       선택자로 만들어냈다 지우면 트랜지션이 걸릴 대상 자체가 사라져서
+       버튼이 배경 없이 켜졌다 꺼졌다 하는 것처럼 뚝뚝 끊겨 보인다.
+
+       absolute 의사요소는 z-index:auto라도 static 텍스트보다 나중에
+       칠해져서, 아무 z-index도 안 주면 오히려 배지 자신의 '시간 미정'
+       글자를 가려버린다 - z-index:-1(부모에 z-index:0으로 스태킹 컨텍스트
+       를 만들어줌)로 확실히 글자 뒤로 보낸다.
+
+       '시간 미정' 상태는 배지 폭이 아주 좁아서, is-set 상태 기준으로 잡은
+       넓은 여백(-12px 등)을 그대로 쓰면 왼쪽에 붙어있는 화살표 아이콘
+       (.time-flow)까지 침범해서 가려버린다 - 여백을 좁혀 그 영역을
+       침범하지 않게 한다. */
+    .ret-badge::before {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      inset: -3px -4px -3px -5px;
+      background-color: var(--error-bg);
+      border-radius: 10px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+
+    .ret-badge.err {
+      background-color: transparent !important;
+      border-color: transparent !important;
+    }
+
+    .ret-badge.err::before {
+      opacity: 1;
     }
 
     /* 회색 배지 안의 콜론은 파란 텍스트의 콜론과 살짝 다르게 (자체 크기에 맞춘 미세 보정) */
@@ -1048,7 +1094,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: #f2f4f6;
+      background: var(--gray-fill);
       border-radius: 16px;
       overflow: hidden;
       transition: background-color 0.7s ease, border-color 0.7s ease;
@@ -1061,10 +1107,10 @@
       right: 12px;
       height: 40px;
       background: var(--blue-light);
-      border: 1px solid #3182f6;
+      border: none;
       border-radius: 10px;
       pointer-events: none;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      box-shadow: none;
       z-index: 1;
     }
 
@@ -1108,7 +1154,7 @@
     }
 
     .chip {
-      background: #f2f4f6;
+      background: var(--gray-fill);
       border: none;
       border-radius: 14px;
       padding: 18px 8px;
@@ -1167,19 +1213,25 @@
       font-weight: 700;
     }
 
-    .stepper-row {
+    /* 5분/10분 탭 양옆에 -/+ 버튼을 붙이는 줄 */
+    .time-unit-row {
       display: flex;
-      gap: 8px;
-      align-items: flex-start;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
     }
 
     .stepper-btn {
-      flex: 1;
-      background: #f2f4f6;
+      flex: 1 1 0;
+      width: auto;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--gray-fill);
       border: 1px solid transparent;
       border-radius: 14px;
-      padding: 13px 8px;
-      font-size: 22px;
+      font-size: 26px;
       font-weight: 700;
       line-height: 1;
       color: var(--ink);
@@ -1187,27 +1239,55 @@
       font-family: inherit;
     }
 
+    /* 시간 텍스트 줄 - 텍스트+버튼을 하나의 그룹으로 가운데 정렬. 텍스트가 늘어나거나 줄어들면 버튼도 옆에 붙어서 함께 밀리고 당겨진다 */
+    .time-header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 14px;
+    }
+
+    /* '직접 설정' 버튼: 시간 텍스트 바로 오른쪽에 붙는 회색 아이콘 버튼 (톱니 아이콘) */
     .stepper-edit {
       flex-shrink: 0;
-      width: 52px;
-      height: 48px;
-      background: #f2f4f6;
+      width: 36px;
+      height: 36px;
+      margin-top: 8px;
+      background: var(--gray-fill);
       border: none;
-      border-radius: 14px;
+      border-radius: 12px;
+      outline: none !important;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       color: var(--muted);
+      font-family: inherit;
+      position: relative;
+    }
+
+    /* 말풍선 꼬리 - 보통 말풍선의 아래쪽 꼬리를 90도 눕혀서 왼쪽(시간 텍스트 쪽)을 가리키게 */
+    .stepper-edit::before {
+      content: '';
+      position: absolute;
+      left: -5px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      border-right: 6px solid var(--gray-fill);
     }
 
     .stepper-edit svg {
-      width: 19px;
-      height: 19px;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
     }
 
     .stepper-btn.plus {
-      color: #1caa5c;
+      color: var(--blue-main);
     }
 
     .stepper-btn.minus {
@@ -1261,7 +1341,7 @@
     textarea,
     input[type=text] {
       width: 100%;
-      background: #f2f4f6;
+      background: var(--gray-fill);
       border: 1px solid transparent;
       border-radius: 14px;
       padding: 18px 16px;
@@ -1311,7 +1391,7 @@
 
     .mgr-trigger {
       width: 100%;
-      background: #f2f4f6;
+      background: var(--gray-fill);
       border: 1px solid transparent;
       border-radius: 14px;
       padding: 16px;
@@ -1398,6 +1478,97 @@
       font-size: 12px;
     }
 
+    /* ===== 외출 사유: 아이콘+라벨 / 텍스트 바로 옆에 붙는 작은 선택 버튼 ===== */
+    .purpose-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .purpose-row-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--ink);
+      letter-spacing: 0;
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    .purpose-row-label .ph {
+      color: #b0b8c1;
+      font-weight: 500;
+    }
+
+    .purpose-row-icon {
+      flex-shrink: 0;
+      display: flex;
+      position: relative;
+      color: var(--blue-main);
+      transition: color 0.25s ease;
+    }
+
+    .purpose-row-icon.is-unselected {
+      color: #b0b8c1;
+    }
+
+    .purpose-row-icon svg {
+      display: block;
+    }
+
+    /* 외출 사유가 바뀔 때 아이콘이 서로 교체되는 전환 애니메이션 */
+    @keyframes iconSwapOut {
+      0% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+      }
+
+      100% {
+        opacity: 0;
+        transform: scale(0.45) rotate(-50deg);
+      }
+    }
+
+    @keyframes iconSwapIn {
+      0% {
+        opacity: 0;
+        transform: scale(0.45) rotate(50deg);
+      }
+
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+      }
+    }
+
+    .purpose-row-text-wrap {
+      position: relative;
+      overflow: hidden;
+      height: 20px;
+      min-width: 0;
+    }
+
+    .purpose-row-text-wrap .trigger-text-part {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* 목적 선택 버튼: '직접 설정' 버튼과 동일한 디자인이지만,
+       세로 중앙 정렬된 한 줄 라벨 옆에 붙으므로 margin-top은 제거 */
+    .purpose-select-slide {
+      display: inline-flex;
+      flex-shrink: 0;
+      margin-left: 6px;
+    }
+
+    .purpose-row-label .purpose-select-btn.stepper-edit {
+      margin-top: 0;
+      flex-shrink: 0;
+    }
+
     /* dvh: 주소창을 반영한 실제 보이는 높이 기준.
        하단 여백(12px)과 시트 패딩까지 포함해 화면의 약 60%가 되도록 보정 */
     .mgr-sheet {
@@ -1420,7 +1591,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      background: #f7f8fa;
+      background: var(--gray-fill);
       border: none;
       border-radius: 16px;
       padding: 14px 16px;
@@ -1454,7 +1625,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #eceff3;
+      background: #fbfbfb;
       color: #8b95a1;
       flex-shrink: 0;
       transition: all 0.2s;
@@ -1513,6 +1684,166 @@
       transform: scale(1);
     }
 
+    /* ===== 외출 목적 드롭다운 팝업 (버튼에 붙어서 뜨는 작은 팝업, 토스 "소비추가" 메뉴 스타일) ===== */
+    .dropdown-overlay {
+      position: fixed;
+      inset: 0;
+      background: transparent;
+      z-index: 1150;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .dropdown-overlay.show {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .dropdown-menu {
+      position: fixed;
+      z-index: 1151;
+      /* 그림자는 바깥 래퍼에 둔다. box-shadow는 요소의 테두리 상자
+         밖에 그려지는데, mask-image를 가진 요소에 같이 있으면 그림자까지
+         마스크 영역 밖이라 통째로 사라져버리므로, 그림자와
+         mask-image(라운드 클리핑)를 서로 다른 레이어로 분리했다. */
+      border-radius: 18px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.06);
+      transform-origin: top left;
+      transform: scale(0.4);
+      opacity: 0;
+      visibility: hidden;
+      /* 너비를 트리거 버튼에 강제로 맞추지 않고, 항목 내용만큼만 좁게 차지하게 둔다
+         (화면 끝에 붙을 때를 대비한 안전 여백만 최대폭으로 제한). */
+      width: max-content;
+      max-width: calc(100vw - 32px);
+      transition: transform 0.22s var(--toss-spring), opacity 0.16s ease, visibility 0.22s;
+      pointer-events: none;
+    }
+
+    .dropdown-menu-body {
+      background: var(--card);
+      border-radius: 18px;
+      overflow: hidden;
+      /* iOS Safari는 overflow:hidden + border-radius로 잘라내는 자식에
+         filter가 걸려 있으면 라운드 마스크를 무시하고 모서리 밖으로
+         삐져나오게 그리는 버그가 있다. mask-image를 걸어두면 그 레이어도
+         강제로 같은 모양으로 다시 클리핑되어 새지 않는다. */
+      -webkit-mask-image: -webkit-radial-gradient(white, black);
+      mask-image: radial-gradient(white, black);
+    }
+
+    .dropdown-menu.show {
+      transform: scale(1);
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition: transform 0.24s var(--toss-spring), opacity 0.18s ease, visibility 0.24s;
+    }
+
+    .dropdown-menu:not(.show) {
+      transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s ease, visibility 0.22s;
+    }
+
+    .dropdown-menu .bs-header {
+      position: relative;
+      margin-bottom: 0;
+      padding: 13px 16px 11px;
+    }
+
+    .dropdown-menu .bs-header h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .dropdown-menu .bs-header::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 1px;
+      background: var(--line);
+    }
+
+    .dropdown-menu .mgr-list-wrap {
+      margin: 0;
+      padding: 0;
+      overflow: visible;
+    }
+
+    .dropdown-menu .mgr-list {
+      gap: 0;
+      /* 항목이 팝업 좌우 끝까지 꽉 채우도록 좌우 여백 없이 붙인다.
+         (예전 0 4px 여백 때문에 눌렀을 때 회색 배경이 좌우로 4px씩
+         비어 보이던 문제 수정) 둥근 모서리는 부모의 overflow:hidden이
+         그대로 잘라주므로 항목 자체는 사각형이어도 된다. */
+      padding: 0;
+      max-height: none;
+      overflow: visible;
+    }
+
+    .dropdown-menu .mgr-item {
+      background: transparent;
+      border-radius: 0;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dropdown-menu .mgr-item:last-child {
+      border-bottom: none;
+    }
+
+    .dropdown-menu .mgr-item:active,
+    .dropdown-menu .mgr-item.pressed {
+      transform: none !important;
+      /* filter: brightness()는 위 mask-image 보정을 적용해도 일부 iOS
+         버전에서 라운드 클리핑을 새는 경우가 있어, filter 대신 미리
+         어둡게 섞어둔 색을 직접 지정한다 (gray-fill 대비 -8%). */
+      background: #e7e9ec !important;
+    }
+
+    .dropdown-menu .mgr-item.sel {
+      background: transparent;
+      color: var(--ink);
+    }
+
+    .dropdown-menu .mgr-item .nm {
+      order: 1;
+      flex: 1;
+      white-space: nowrap;
+    }
+
+    .dropdown-menu .mgr-item .icon-wrap {
+      order: 2;
+      width: 22px;
+      height: 22px;
+      background: transparent;
+      color: var(--blue-main);
+      /* 텍스트 길이와 상관없이 아이콘이 항상 팝업 오른쪽 끝에 나란히 오도록 고정 */
+      margin-left: auto;
+    }
+
+    .dropdown-menu .mgr-item .icon-wrap svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .dropdown-menu .mgr-item.sel .icon-wrap {
+      background: transparent;
+      color: var(--blue-main);
+    }
+
+    .dropdown-menu .mgr-item .check {
+      display: none;
+    }
+
+    .dropdown-menu .scroll-indicator {
+      display: none;
+    }
+
     .setup-footer,
     .submitbar {
       margin-top: auto;
@@ -1533,7 +1864,7 @@
       left: 0;
       width: 100%;
       height: 28px;
-      background: linear-gradient(to top, var(--bg-main), rgba(249, 250, 251, 0));
+      background: linear-gradient(to top, var(--bg-main), rgba(251, 251, 251, 0));
       pointer-events: none;
     }
 
@@ -1639,7 +1970,7 @@
       border-radius: 36px;
       position: relative;
       overflow: hidden;
-      background: #f1f5f9;
+      background: #fbfbfb;
       box-shadow: inset 0 8px 24px rgba(0, 0, 0, 0.04), 0 12px 32px rgba(0, 0, 0, 0.06);
       border: 6px solid #e2e8f0;
       isolation: isolate;
@@ -1897,12 +2228,12 @@
     }
 
     .done-node.out {
-      background: #def0e8;
-      color: #1caa5c;
+      background: var(--blue-light);
+      color: var(--blue-main);
     }
 
     .done-node.back.done {
-      background: #f8e4e7;
+      background: var(--error-bg);
       color: var(--error);
     }
 
@@ -1956,7 +2287,7 @@
       top: 0;
       height: 100%;
       width: 0%;
-      background-image: linear-gradient(to right, #def0e8, #f8e4e7);
+      background-image: linear-gradient(to right, var(--blue-light), var(--error-bg));
       background-size: 152px 100%;
       background-position: left center;
       border-radius: 8px;
@@ -1969,7 +2300,7 @@
 
     .again {
       margin-top: 24px;
-      background: #f2f4f6;
+      background: var(--gray-fill);
       color: var(--ink);
       padding: 16px 40px;
       font-size: 16px;
@@ -2022,7 +2353,7 @@
     .purpose-scroll-wrap {
       width: 100%;
       overflow-x: auto;
-      background: #f2f4f6;
+      background: var(--gray-fill);
       border-radius: 16px;
       padding: 6px;
       scrollbar-width: none;
@@ -2062,10 +2393,10 @@
       left: 0;
       bottom: 0;
       width: 0;
-      background: #e8f3ff;
-      border: 1px solid #3182f6;
+      background: var(--blue-light);
+      border: none;
       border-radius: 12px;
-      box-shadow: 0 2px 7px rgba(49, 130, 246, 0.12);
+      box-shadow: none;
       transform: translateX(var(--tx, 0px)) scale(var(--bg-scale, 1));
       /* width는 같은 탭 그룹 안에서 항상 동일(flex:1)하므로 애니메이션
          대상에서 제외한다. width를 transition에 포함하면 프레임마다
@@ -2078,7 +2409,7 @@
 
     .ptab {
       flex: 1;
-      min-width: 64px;
+      min-width: 56px;
       position: relative;
       z-index: 2;
       display: flex;
@@ -2096,6 +2427,7 @@
       color: var(--muted);
       cursor: pointer;
       border-radius: 12px;
+      outline: none !important;
       transition: transform var(--press-out), background-color var(--press-out),
                   color 0.3s !important;
       font-family: inherit;
@@ -2129,8 +2461,11 @@
       background-color: transparent !important;
     }
 
-    .purpose-tabs:has(.ptab.sel:active) .purpose-bg,
-    .purpose-tabs:has(.ptab.sel.pressed) .purpose-bg {
+    /* 아이폰(WebKit)에서 :has() 선택자는 하이라이트가 움직이는 동안
+       매 프레임 상위 요소의 스타일을 다시 계산하게 만들어 렉의 원인이 된다.
+       학교 일정 달력 하이라이트(.sch-sliding-highlight)와 같은 방식으로
+       버튼을 누를 때 JS가 이 하이라이트에 직접 .is-pressed 클래스를 붙이도록 바꾼다. */
+    .purpose-bg.is-pressed {
       --bg-scale: 0.94;
       transition: transform var(--press-out), width var(--slide);
     }
@@ -2184,7 +2519,7 @@
       left: 0;
       width: 100%;
       height: 50px;
-      background: linear-gradient(to top, var(--bg-main) 10%, rgba(249, 250, 251, 0) 100%);
+      background: linear-gradient(to top, var(--bg-main) 10%, rgba(251, 251, 251, 0) 100%);
       display: flex;
       justify-content: center;
       align-items: flex-end;
@@ -2565,7 +2900,7 @@
     }
 
     .cm-btn.ghost {
-      background: #f2f4f6;
+      background: var(--gray-fill);
       color: var(--ink);
     }
 
@@ -2818,6 +3153,16 @@
       animation-delay: 0.12s;
     }
 
+
+    /* 직접 설정 버튼도 일반 중립 UI와 동일한 Toss Grey 100 계열을 사용 */
+    .stepper-edit {
+      background: #f3f4f6 !important;
+      border: 0 !important;
+      box-shadow: none !important;
+    }
+    .stepper-edit::before {
+      border-right-color: #f3f4f6 !important;
+    }
   </style>
  </head>
  <body ontouchstart="">
@@ -2828,13 +3173,13 @@
      <svg class="idcard-mini" viewBox="-6 -6 192 124" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
        <linearGradient id="cardBgMini" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#ffffff" /> <stop offset="1" stop-color="#f2f4f6" />
+        <stop offset="0" stop-color="#ffffff" /> <stop offset="1" stop-color="#fbfbfb" />
        </linearGradient>
        <clipPath id="cardClipMini">
         <rect x="2" y="2" width="176" height="112" rx="14" />
        </clipPath>
       </defs>
-      <rect x="2" y="2" width="176" height="112" rx="14" fill="url(#cardBgMini)" stroke="#e5e8eb" stroke-width="2" /> <rect x="2" y="2" width="176" height="32" rx="14" fill="#3182f6" clip-path="url(#cardClipMini)" /> <rect x="2" y="24" width="176" height="10" fill="#3182f6" clip-path="url(#cardClipMini)" /> <rect x="14" y="46" width="26" height="18" rx="4" fill="#e8f3ff" stroke="#a3cfff" stroke-width="1.5" /> <circle cx="150" cy="64" r="16" fill="#e5e8eb" /> <circle cx="150" cy="59" r="5" fill="#8b95a1" /> <path d="M141 72a9 7 0 0 1 18 0" fill="#8b95a1" /> <rect x="14" y="76" width="60" height="6" rx="3" fill="#b0b8c1" /> <rect x="14" y="88" width="40" height="4" rx="2" fill="#e5e8eb" />
+      <rect x="2" y="2" width="176" height="112" rx="14" fill="url(#cardBgMini)" stroke="#e5e8eb" stroke-width="2" /> <rect x="2" y="2" width="176" height="32" rx="14" fill="#3182f6" clip-path="url(#cardClipMini)" /> <rect x="2" y="24" width="176" height="10" fill="#3182f6" clip-path="url(#cardClipMini)" /> <rect x="14" y="46" width="26" height="18" rx="4" fill="#c9e4ff" stroke="#9cc9ff" stroke-width="1.5" /> <circle cx="150" cy="64" r="16" fill="#e5e8eb" /> <circle cx="150" cy="59" r="5" fill="#8b95a1" /> <path d="M141 72a9 7 0 0 1 18 0" fill="#8b95a1" /> <rect x="14" y="76" width="60" height="6" rx="3" fill="#b0b8c1" /> <rect x="14" y="88" width="40" height="4" rx="2" fill="#e5e8eb" />
       <g clip-path="url(#cardClipMini)">
        <rect class="cardshine" x="-30" y="-10" width="50" height="150" fill="#ffffff" opacity=".7" transform="skewX(-20)" />
       </g>
@@ -2861,13 +3206,13 @@
      <svg class="idcard-small" viewBox="-15 -10 210 136" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
        <linearGradient id="cardBg" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#ffffff" /> <stop offset="1" stop-color="#f2f4f6" />
+        <stop offset="0" stop-color="#ffffff" /> <stop offset="1" stop-color="#fbfbfb" />
        </linearGradient>
        <clipPath id="cardClip">
         <rect x="2" y="2" width="176" height="112" rx="14" />
        </clipPath>
       </defs>
-      <rect x="2" y="2" width="176" height="112" rx="14" fill="url(#cardBg)" stroke="#e5e8eb" stroke-width="2" /> <rect x="2" y="2" width="176" height="32" rx="14" fill="#3182f6" clip-path="url(#cardClip)" /> <rect x="2" y="24" width="176" height="10" fill="#3182f6" clip-path="url(#cardClip)" /> <text x="14" y="22" font-family="inherit" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="1">EPX PASS</text> <rect x="14" y="46" width="26" height="18" rx="4" fill="#e8f3ff" stroke="#a3cfff" stroke-width="1.5" /> <circle cx="150" cy="64" r="16" fill="#e5e8eb" /> <circle cx="150" cy="59" r="5" fill="#8b95a1" /> <path d="M141 72a9 7 0 0 1 18 0" fill="#8b95a1" /> <rect x="14" y="76" width="60" height="6" rx="3" fill="#b0b8c1" /> <rect x="14" y="88" width="40" height="4" rx="2" fill="#e5e8eb" />
+      <rect x="2" y="2" width="176" height="112" rx="14" fill="url(#cardBg)" stroke="#e5e8eb" stroke-width="2" /> <rect x="2" y="2" width="176" height="32" rx="14" fill="#3182f6" clip-path="url(#cardClip)" /> <rect x="2" y="24" width="176" height="10" fill="#3182f6" clip-path="url(#cardClip)" /> <text x="14" y="22" font-family="inherit" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="1">EPX PASS</text> <rect x="14" y="46" width="26" height="18" rx="4" fill="#c9e4ff" stroke="#9cc9ff" stroke-width="1.5" /> <circle cx="150" cy="64" r="16" fill="#e5e8eb" /> <circle cx="150" cy="59" r="5" fill="#8b95a1" /> <path d="M141 72a9 7 0 0 1 18 0" fill="#8b95a1" /> <rect x="14" y="76" width="60" height="6" rx="3" fill="#b0b8c1" /> <rect x="14" y="88" width="40" height="4" rx="2" fill="#e5e8eb" />
       <g clip-path="url(#cardClip)">
        <rect class="cardshine" x="-30" y="-10" width="50" height="150" fill="#ffffff" opacity=".7" transform="skewX(-20)" />
       </g>
@@ -2903,7 +3248,21 @@
     </div>
     <div>
      <div class="label" style="margin-bottom:8px;">외출 목적</div>
-     <button class="mgr-trigger" id="purposeTrigger" type="button"><span class="txt"><span id="purposeTriggerText" class="ph trigger-text-part">눌러서 선택</span></span> <span class="arrow">▼</span></button>
+     <div class="purpose-row">
+      <div class="purpose-row-label">
+       <span class="purpose-row-icon is-unselected" id="purposeRowIcon"> 
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+         <path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" /><path d="M10 17l5-5-5-5" /><path d="M15 12H3" />
+        </svg> 
+       </span> <span class="purpose-row-text-wrap"><span id="purposeLabelText" class="ph trigger-text-part">미선택</span></span> <span class="purpose-select-slide" id="purposeSelectSlide"> 
+        <button type="button" class="stepper-edit purpose-select-btn" id="purposeTrigger" aria-label="외출 목적 선택">
+         <svg viewBox="0 0 24 24" fill="currentColor">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 0 0-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 0 0-2.282.819l-.922 1.597a1.875 1.875 0 0 0 .432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 0 0 0 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 0 0-.432 2.385l.922 1.597a1.875 1.875 0 0 0 2.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 0 0 2.28-.819l.923-1.597a1.875 1.875 0 0 0-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 0 0 0-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 0 0-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 0 0-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 0 0-1.85-1.567h-1.843ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" />
+         </svg>
+        </button> 
+       </span>
+      </div>
+     </div>
      <div class="slidein-wrap" id="etcReasonWrap">
       <div style="padding-top: 8px;">
        <textarea id="etcReason" placeholder="외출 사유를 적어주세요" style="height:56px;"></textarea>
@@ -2912,14 +3271,21 @@
     </div>
     <div style="margin-top: 16px;">
      <div class="label" style="margin-bottom:8px;">복귀 예정 시간</div>
-     <div class="time-display-wrap" style="padding:4px 0 8px;">
-      <div class="time-val" id="returnTimeVal">
-       <span class="cur-time-group"><span class="t-part valAmPm" id="valAmPm">오전</span> <span class="t-part" id="valHour">12</span> <span class="t-colon">:</span> <span class="t-part" id="valMinute">00</span></span><span class="time-flow" aria-hidden="true"><span class="time-flow-ch">
-         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="9 6 15 12 9 18" />
-         </svg>
-        </span></span><span class="ret-badge" id="returnBadge">시간 미정</span>
+     <div class="time-header-row">
+      <div class="time-display-wrap" style="padding:4px 0 8px;">
+       <div class="time-val" id="returnTimeVal">
+        <span class="cur-time-group"><span class="t-part valAmPm" id="valAmPm">오전</span> <span class="t-part" id="valHour">12</span> <span class="t-colon">:</span> <span class="t-part" id="valMinute">00</span></span><span class="time-flow" aria-hidden="true"><span class="time-flow-ch">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+           <polyline points="9 6 15 12 9 18" />
+          </svg>
+         </span></span><span class="ret-badge" id="returnBadge">시간 미정</span>
+       </div>
       </div>
+      <button type="button" class="stepper-edit" id="btnCustomTime" aria-label="직접 선택">
+       <svg width="25" height="25" viewBox="0 0 24 24" fill="currentColor">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 0 0-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 0 0-2.282.819l-.922 1.597a1.875 1.875 0 0 0 .432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 0 0 0 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 0 0-.432 2.385l.922 1.597a1.875 1.875 0 0 0 2.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 0 0 2.28-.819l.923-1.597a1.875 1.875 0 0 0-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 0 0 0-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 0 0-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 0 0-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 0 0-1.85-1.567h-1.843ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" />
+       </svg>
+      </button>
      </div>
      <div class="purpose-scroll-wrap" style="padding:4px;">
       <div class="purpose-tabs" id="timeUnitTabs">
@@ -2930,20 +3296,12 @@
        <button type="button" class="ptab" data-unit="60" style="padding:10px 2px;"><span class="ptab-label">1시간</span></button>
       </div>
      </div>
-     <div class="slidein-wrap" id="outTimeErrorWrap">
-      <div class="time-err-msg">밑에 버튼을 눌러 시간을 조절하세요</div>
-     </div>
-     <div class="stepper-row" style="margin-top:8px;">
+     <div class="time-unit-row">
       <button type="button" class="stepper-btn minus" id="btnTimeMinus" aria-label="시간 빼기">−</button>
       <button type="button" class="stepper-btn plus" id="btnTimePlus" aria-label="시간 더하기">+</button>
-      <div class="edit-col" style="display:flex; flex-direction:column; align-items:center; gap:6px; width:52px; flex-shrink:0;">
-       <button type="button" class="stepper-edit" id="btnCustomTime" aria-label="직접 선택">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-         <path d="M12 20h9" /> <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-        </svg>
-       </button>
-       <div class="tap-hint" style="white-space:nowrap;">직접 설정</div>
-      </div>
+     </div>
+     <div class="slidein-wrap" id="outTimeErrorWrap">
+      <div class="time-err-msg">위 버튼을 눌러 시간을 조절하세요</div>
      </div>
      <button type="button" class="latelink" id="btnResetTime" style="padding:6px 10px; text-decoration: none;">↺ 현재 시간으로 초기화</button>
     </div>
@@ -2991,14 +3349,21 @@
      </div>
      <div>
       <div class="label">새 복귀 예정 시간</div>
-      <div class="time-display-wrap" style="padding: 4px 0 10px;">
-       <div class="late-time-val" id="lateReturnTimeVal">
-        <span class="cur-time-group"><span class="t-part valAmPm" id="lateValAmPm">오전</span> <span class="t-part" id="lateValHour">12</span> <span class="t-colon">:</span> <span class="t-part" id="lateValMinute">00</span></span><span class="time-flow" aria-hidden="true"><span class="time-flow-ch">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-           <polyline points="9 6 15 12 9 18" />
-          </svg>
-         </span></span><span class="ret-badge" id="lateReturnBadge">시간 미정</span>
+      <div class="time-header-row">
+       <div class="time-display-wrap" style="padding: 4px 0 10px;">
+        <div class="late-time-val" id="lateReturnTimeVal">
+         <span class="cur-time-group"><span class="t-part valAmPm" id="lateValAmPm">오전</span> <span class="t-part" id="lateValHour">12</span> <span class="t-colon">:</span> <span class="t-part" id="lateValMinute">00</span></span><span class="time-flow" aria-hidden="true"><span class="time-flow-ch">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 6 15 12 9 18" />
+           </svg>
+          </span></span><span class="ret-badge" id="lateReturnBadge">시간 미정</span>
+        </div>
        </div>
+       <button type="button" class="stepper-edit" id="btnLateCustomTime" aria-label="직접 선택">
+        <svg width="25" height="25" viewBox="0 0 24 24" fill="currentColor">
+         <path fill-rule="evenodd" clip-rule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 0 0-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 0 0-2.282.819l-.922 1.597a1.875 1.875 0 0 0 .432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 0 0 0 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 0 0-.432 2.385l.922 1.597a1.875 1.875 0 0 0 2.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 0 0 2.28-.819l.923-1.597a1.875 1.875 0 0 0-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 0 0 0-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 0 0-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 0 0-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 0 0-1.85-1.567h-1.843ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" />
+        </svg>
+       </button>
       </div>
       <div class="purpose-scroll-wrap" style="padding:4px;">
        <div class="purpose-tabs" id="lateTimeUnitTabs">
@@ -3009,20 +3374,12 @@
         <button type="button" class="ptab" data-unit="60" style="padding:10px 2px;"><span class="ptab-label">1시간</span></button>
        </div>
       </div>
-      <div class="slidein-wrap" id="lateTimeErrorWrap">
-       <div class="time-err-msg">밑에 버튼을 눌러 시간을 조절하세요</div>
-      </div>
-      <div class="stepper-row" style="margin-top:8px;">
+      <div class="time-unit-row">
        <button type="button" class="stepper-btn minus" id="btnLateTimeMinus" aria-label="시간 빼기">−</button>
        <button type="button" class="stepper-btn plus" id="btnLateTimePlus" aria-label="시간 더하기">+</button>
-       <div class="edit-col" style="display:flex; flex-direction:column; align-items:center; gap:6px; width:52px; flex-shrink:0;">
-        <button type="button" class="stepper-edit" id="btnLateCustomTime" aria-label="직접 선택">
-         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 20h9" /> <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-         </svg>
-        </button>
-        <div class="tap-hint" style="white-space:nowrap;">직접 설정</div>
-       </div>
+      </div>
+      <div class="slidein-wrap" id="lateTimeErrorWrap">
+       <div class="time-err-msg">위 버튼을 눌러 시간을 조절하세요</div>
       </div>
       <button type="button" class="latelink" id="btnLateResetTime" style="padding:6px 10px; text-decoration: none;">↺ 원래 복귀 시간으로 초기화</button>
      </div>
@@ -3086,22 +3443,14 @@
     </div>
    </div>
   </div>
-  <div class="bottom-sheet-overlay" id="purposeOverlay"></div>
-  <div class="bottom-sheet mgr-sheet" id="purposeSheet">
-   <div class="bs-header">
-    <h3>외출 목적 선택</h3>
-    <button type="button" class="bs-close" id="btnPurposeClose">
-     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <line x1="18" y1="6" x2="6" y2="18"></line> <line x1="6" y1="6" x2="18" y2="18"></line>
-     </svg>
-    </button>
-   </div>
-   <div class="mgr-list-wrap">
-    <div class="mgr-list" id="purposeList"></div>
-    <div class="scroll-indicator" id="purposeScrollIndicator">
-     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="6 9 12 15 18 9" />
-     </svg>
+  <div class="dropdown-overlay" id="purposeOverlay"></div>
+  <div class="dropdown-menu" id="purposeSheet">
+   <div class="dropdown-menu-body">
+    <div class="bs-header">
+     <h3>외출 목적 선택</h3>
+    </div>
+    <div class="mgr-list-wrap">
+     <div class="mgr-list" id="purposeList"></div>
     </div>
    </div>
   </div>
@@ -3431,23 +3780,44 @@
       let startX = 0;
       let startY = 0;
 
+      // 선택된 시간 단위(ptab)를 누르면, 뒤에서 같이 눌려야 하는
+      // 파란색 이동 하이라이트(.purpose-bg)를 찾는다. (학교 일정 달력의
+      // sch-sliding-highlight와 동일한 JS 직접 제어 방식 - :has() 미사용)
+      const pressLinkedHighlight = el => {
+        if (el.classList.contains('ptab') && el.classList.contains('sel')) {
+          const tabs = el.closest('.purpose-tabs');
+          return tabs ? tabs.querySelector('.purpose-bg') : null;
+        }
+        return null;
+      };
+
       const release = () => {
         if (!pressedEl) return;
         const el = pressedEl;
+        const hl = pressLinkedHighlight(el);
         pressedEl = null;
         const elapsed = Date.now() - pressTime;
         // 최소 유지 시간. 짧게 톡 누르면 눌림이 채 보이기도 전에 풀려서
         // '반응이 없는' 느낌이 든다. 170ms은 채워준다.
         const MIN_PRESS = 170;
-        if (elapsed < MIN_PRESS) {
-          setTimeout(() => el.classList.remove('pressed'), MIN_PRESS - elapsed);
-        } else {
+        const finish = () => {
           el.classList.remove('pressed');
+          if (hl) hl.classList.remove('is-pressed');
+        };
+        if (elapsed < MIN_PRESS) {
+          setTimeout(finish, MIN_PRESS - elapsed);
+        } else {
+          finish();
         }
       };
 
       const cancel = () => {
-        if (pressedEl) { pressedEl.classList.remove('pressed'); pressedEl = null; }
+        if (pressedEl) {
+          pressedEl.classList.remove('pressed');
+          const hl = pressLinkedHighlight(pressedEl);
+          if (hl) hl.classList.remove('is-pressed');
+          pressedEl = null;
+        }
       };
 
       document.addEventListener('touchstart', e => {
@@ -3459,6 +3829,8 @@
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
         el.classList.add('pressed');
+        const hl = pressLinkedHighlight(el);
+        if (hl) hl.classList.add('is-pressed');
       }, { passive: true });
 
       document.addEventListener('touchmove', e => {
@@ -3659,6 +4031,15 @@ function smoothScrollTo(targetY) {
       }, { once: true });
     }
 
+    // 색상 변화 없이 흔들림만 (옆에 붙어있는 '직접 설정' 버튼처럼 색은 그대로 두고 같이 흔들리기만 할 때)
+    function shakeOnly(el) {
+      if (!el) return;
+      el.classList.remove('err-shake');
+      void el.offsetWidth;
+      el.classList.add('err-shake');
+      el.addEventListener('animationend', () => el.classList.remove('err-shake'), { once: true });
+    }
+
     // shake + red background for time picker errors
     function shakeWithTint(sheetEl, tintEl) {
       sheetEl.classList.remove('err-shake');
@@ -3786,7 +4167,7 @@ function smoothScrollTo(targetY) {
       let dimColor = 'rgba(49, 130, 246, 0.5)';
 
       if (pct <= 20) { color = 'var(--error)'; dimColor = 'rgba(240, 68, 82, 0.5)'; }
-      else if (pct <= 50) { color = '#f59e0b'; dimColor = 'rgba(245, 158, 11, 0.5)'; }
+      else if (pct <= 50) { color = 'var(--blue-main)'; dimColor = 'rgba(49, 130, 246, 0.5)'; }
 
       liq.style.setProperty('--liq-color', color);
       liq.style.setProperty('--liq-color-dim', dimColor);
@@ -3873,7 +4254,7 @@ function smoothScrollTo(targetY) {
     }
 
     const MANAGERS = ['😭잘 모름😭', '김소희Ⓜ️', '김혜리Ⓜ️', '송유진Ⓜ️', '엄혜령Ⓜ️', '정준환Ⓜ️', '김진주Ⓜ️', '이명호Ⓜ️', '심예지™️', '윤현식™️'];
-    const AVA_COLORS = ['#b0b8c1', '#818cf8', '#60a5fa', '#38bdf8', '#7dd3fc'];
+    const AVA_COLORS = ['#b0b8c1', 'var(--blue-main)', '#c9e4ff', 'var(--error)', '#fed6d6'];
     let mgrValue = '';
     const unknownSvg = `<svg viewBox="0 0 100 100" style="width:100%;height:100%;display:block;"><circle cx="50" cy="50" r="50" fill="#e5e8eb" /><path d="M 28 42 A 12 12 0 0 0 46 42" stroke="#b0b8c1" stroke-width="7" stroke-linecap="round" fill="none" /><path d="M 54 42 A 12 12 0 0 0 72 42" stroke="#b0b8c1" stroke-width="7" stroke-linecap="round" fill="none" /><path d="M 38 64 A 12 12 0 0 1 62 64 Z" fill="#b0b8c1" /></svg>`;
 
@@ -3964,7 +4345,7 @@ function smoothScrollTo(targetY) {
 
     /* 외출 목적 관련 로직 추가 */
     const PURPOSES = [
-      { text: '식사', icon: '<path d="M2 14a10 10 0 0 0 20 0H2z" fill="currentColor"/><path d="M12 5v5M8 6v4M16 6v4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>' },
+      { text: '식사', icon: '<path d="M2 14a10 10 0 0 0 20 0H2z" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 5v5M8 6v4M16 6v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' },
       { text: '간식, 음료', icon: '<path d="M6 8l1.5 13h9L18 8H6z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/><path d="M4 8h16M11 2l-2 6M15 2l-2 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' },
       { text: '교재 및 준비물 구매', icon: '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' },
       { text: '외부 학원', icon: '<path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' },
@@ -3972,6 +4353,53 @@ function smoothScrollTo(targetY) {
     ];
 
     let purpose = '';
+
+    // '외출 사유' 라벨 왼쪽에 붙는 아이콘의 기본값(목적을 아직 고르지 않았을 때의 화살표+문 아이콘)
+    const DEFAULT_PURPOSE_ICON = '<path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" /><path d="M10 17l5-5-5-5" /><path d="M15 12H3" />';
+
+    function purposeRowIconSvg(inner) {
+      return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+    }
+
+    function findPurposeIcon(text) {
+      const found = PURPOSES.find(p => p.text === text);
+      return found ? found.icon : DEFAULT_PURPOSE_ICON;
+    }
+
+    let currentPurposeIconKey = null;
+
+    // '외출 사유' 라벨 아이콘을 선택된 목적에 맞는 아이콘(PURPOSES에 이미 있는 아이콘)으로
+    // 교체한다. 목적이 없으면 원래 있던 화살표+문 아이콘으로 되돌아간다.
+    function setPurposeIcon(text) {
+      const key = text || null;
+      if (key === currentPurposeIconKey) return;
+      currentPurposeIconKey = key;
+
+      const wrap = $('purposeRowIcon');
+      if (!wrap) return;
+      wrap.classList.toggle('is-unselected', !text);
+
+      const newSvg = purposeRowIconSvg(findPurposeIcon(text));
+      const oldEl = wrap.firstElementChild;
+
+      if (oldEl) {
+        const clone = oldEl.cloneNode(true);
+        clone.style.position = 'absolute';
+        clone.style.top = '0';
+        clone.style.left = '0';
+        clone.style.pointerEvents = 'none';
+        clone.style.animation = 'iconSwapOut 0.28s ease forwards';
+        wrap.appendChild(clone);
+        setTimeout(() => clone.remove(), 280);
+        oldEl.remove();
+      }
+
+      wrap.insertAdjacentHTML('beforeend', newSvg);
+      const newEl = wrap.lastElementChild;
+      newEl.style.animation = 'none';
+      void newEl.offsetWidth;
+      newEl.style.animation = 'iconSwapIn 0.38s var(--toss-spring) forwards';
+    }
 
     function saveDraftState() {
       store.saveDraft({
@@ -4002,8 +4430,28 @@ function smoothScrollTo(targetY) {
     }
 
     function setPurposeTrigger(text) {
-      if (text) { animateTriggerText('purposeTriggerText', text, false); }
-      else { animateTriggerText('purposeTriggerText', '눌러서 선택', true); }
+      // 선택 결과는 오른쪽 버튼이 아니라 왼쪽 '외출 사유' 라벨에 반영한다.
+      // 버튼은 항상 고정된 '선택' 텍스트만 보여준다.
+      const slide = $('purposeSelectSlide');
+      const firstRect = slide ? slide.getBoundingClientRect() : null;
+
+      animateTriggerText('purposeLabelText', text || '미선택', !text);
+      setPurposeIcon(text);
+
+      // 텍스트 길이가 바뀌어 버튼 위치가 밀리면, 순간 이동 대신 부드럽게 슬라이드.
+      // 버튼(.stepper-edit) 자체는 눌림 효과용 !important transition이 걸려 있어
+      // 별도의 감싸는 span(slide 래퍼)에 transform을 애니메이션시킨다.
+      if (slide && firstRect) {
+        const lastRect = slide.getBoundingClientRect();
+        const dx = firstRect.left - lastRect.left;
+        if (dx) {
+          slide.style.transition = 'none';
+          slide.style.transform = `translateX(${dx}px)`;
+          void slide.offsetWidth;
+          slide.style.transition = 'transform 0.45s var(--toss-spring)';
+          slide.style.transform = 'translateX(0)';
+        }
+      }
     }
 
     function renderPurposeList() {
@@ -4025,16 +4473,59 @@ function smoothScrollTo(targetY) {
       });
     }
 
+    function positionPurposeSheet() {
+      // '선택' 버튼 오른쪽에 바로 붙어서 뜨는 팝업. 버튼의 오른쪽 끝에서
+      // 이어지는 것처럼 보이도록 앵커하고(transform-origin: top left),
+      // 화면 오른쪽 공간이 부족하면 버튼 왼쪽으로 방향을 바꾼다.
+      // 세로는 버튼 위쪽 끝에 맞추되, 화면 아래로 넘치면 위로 당겨준다.
+      const trigger = $('purposeTrigger');
+      const sheet = $('purposeSheet');
+      const r = trigger.getBoundingClientRect();
+      const gap = 8;
+
+      sheet.style.left = '';
+      sheet.style.right = '';
+      sheet.style.top = '';
+      sheet.style.bottom = '';
+
+      const sheetWidth = sheet.offsetWidth;
+      const sheetHeight = sheet.offsetHeight;
+      const spaceRight = window.innerWidth - r.right - gap;
+
+      let originX;
+      if (sheetWidth > spaceRight && r.left - gap >= sheetWidth) {
+        // 오른쪽 공간이 부족하면 버튼 왼쪽으로 펼침
+        sheet.style.right = (window.innerWidth - r.left + gap) + 'px';
+        originX = 'right';
+      } else {
+        sheet.style.left = (r.right + gap) + 'px';
+        originX = 'left';
+      }
+
+      let top = r.top;
+      const maxTop = window.innerHeight - sheetHeight - gap;
+      if (top > maxTop) top = Math.max(gap, maxTop);
+      sheet.style.top = top + 'px';
+
+      sheet.style.transformOrigin = (originX === 'right' ? 'top right' : 'top left');
+    }
+
     function openPurposeSheet() {
-      $('purposeOverlay').classList.add('show');
-      // 목록을 그리는 작업은 시트 높이에 영향을 주므로 show 클래스를
-      // 붙이기 전에 먼저 끝낸다(처음/두 번째 열 때 시작 위치가 달라지는
-      // 문제 방지). 스크롤 인디케이터 체크만 다음 프레임으로 미룬다.
+      // 목록을 그리는 작업은 시트 크기에 영향을 주므로, 위치 계산 전에 먼저 끝낸다.
       renderPurposeList();
-      $('purposeSheet').classList.add('show');
-      requestAnimationFrame(() => {
-        checkScrollIndicator('purposeList', 'purposeScrollIndicator');
-      });
+      const sheet = $('purposeSheet');
+      // 위치를 계산하려면 실제 렌더된 크기가 필요하므로, 화면 밖(투명)에서
+      // 한 번 강제 레이아웃한 뒤 위치를 잡고 나서야 show 클래스를 붙인다.
+      sheet.style.visibility = 'hidden';
+      sheet.style.right = '';
+      sheet.style.bottom = '';
+      sheet.style.left = '-9999px';
+      sheet.style.top = '0px';
+      void sheet.offsetHeight;
+      positionPurposeSheet();
+      sheet.style.visibility = '';
+      $('purposeOverlay').classList.add('show');
+      requestAnimationFrame(() => $('purposeSheet').classList.add('show'));
     }
     function closePurposeSheet() {
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -4043,8 +4534,10 @@ function smoothScrollTo(targetY) {
     }
 
     $('purposeTrigger').onclick = openPurposeSheet;
-    $('btnPurposeClose').onclick = closePurposeSheet;
     $('purposeOverlay').onclick = closePurposeSheet;
+    window.addEventListener('resize', () => {
+      if ($('purposeSheet').classList.contains('show')) positionPurposeSheet();
+    });
 
 
     const LATE_REASONS = [
@@ -4322,6 +4815,16 @@ function smoothScrollTo(targetY) {
         badge.innerHTML = restoredHtml;
         badge.classList.toggle('is-set', oldIsSet);
         timeWrap.classList.toggle('is-time-set', oldIsSet);
+
+        // badge와 마찬가지로, 끊긴 전환이 남겨둔 timeWrap의 임시 width/
+        // min-width 잠금도 함께 확정된 상태로 되돌려야 다음 전환이 엉뚱한
+        // 시작 폭에서 출발하지 않는다.
+        if (timeWrap._widthAnimTimer) { clearTimeout(timeWrap._widthAnimTimer); timeWrap._widthAnimTimer = null; }
+        timeWrap.style.transition = 'none';
+        timeWrap.style.width = '';
+        timeWrap.style.minWidth = '';
+        void timeWrap.offsetWidth;
+        timeWrap.style.transition = '';
       }
 
       // 설정 상태에서 숫자만 바뀌는 경우에는 별도의 레이아웃 애니메이션을
@@ -4362,7 +4865,13 @@ function smoothScrollTo(targetY) {
 
       const makeLayer = (html, layerIsSet, extraClass) => {
         const layer = document.createElement('span');
-        layer.className = 'time-switch-layer ' + extraClass;
+        // 'ret-badge' 클래스를 반드시 같이 붙여야 한다. 오전/오후 글자 크기·
+        // 여백, 콜론 위치 등은 '.ret-badge .valAmPm' 같은 하위선택자로
+        // 지정되어 있어서, 이 클래스가 없으면 layer 안의 글자들이 실제
+        // 배지보다 살짝 더 넓게(오전/오후가 32px로 그대로) 측정되고, 애니
+        // 메이션이 끝나고 진짜 배지로 바뀌는 순간 그 차이만큼 폭이 툭
+        // 줄어들며 옆의 '직접 설정' 버튼이 흔들리는 것처럼 보였다.
+        layer.className = 'time-switch-layer ret-badge ' + extraClass;
         layer.innerHTML = html;
         layer.style.cssText = [
           'position:absolute',
@@ -4403,6 +4912,19 @@ function smoothScrollTo(targetY) {
       const oldInlinePosition = badge.style.position;
       const oldInlineFlex = badge.style.flex;
 
+      // timeWrap(.time-val/.late-time-val) 쪽도 badge와 같은 방식(이전 폭 →
+      // 강제 리플로우 → 새 폭)으로 명시적 px width를 잠가줘야 한다. 그냥
+      // 두면 min-width:max-content 때문에 badge 폭이 바뀌는 즉시 timeWrap도
+      // 같이 순간적으로 스냅되어 버려서, 배지 옆의 '직접 선택' 버튼이 옆으로
+      // 스윽 밀리지 않고 툭 튀어버린다(요청된 버그). badge와 timeWrap을
+      // 같은 지속시간/이징으로 같이 움직이면 폭 변화량이 동일(= 다른 내용은
+      // 그대로이고 badge만 커지므로)하기 때문에 2차 이동 없이 자연스럽게
+      // 이어진다.
+      if (timeWrap._widthAnimTimer) { clearTimeout(timeWrap._widthAnimTimer); timeWrap._widthAnimTimer = null; }
+      const oldInlineWrapTransition = timeWrap.style.transition;
+      const oldInlineWrapWidth = timeWrap.style.width;
+      const oldInlineWrapMinWidth = timeWrap.style.minWidth;
+
       // 중요: 상태 클래스의 font-size/transform transition은 전환 중 완전히 차단한다.
       // 마지막에 클래스를 바꾸면서 두 번째 애니메이션이 발생하는 원인을 제거한다.
       badge.style.transition = 'none';
@@ -4420,6 +4942,9 @@ function smoothScrollTo(targetY) {
 
       // 새 layer가 들어갈 정확한 폭을 측정.
       const newWidth = Math.ceil(newLayer.offsetWidth);
+      // timeWrap의 새 목표 폭 = 기존 폭 + badge가 늘어나거나 줄어드는 만큼.
+      // (badge를 제외한 나머지 형제 요소들의 폭은 이 전환 중 변하지 않는다.)
+      const newParentWidth = parentWidth + (newWidth - oldWidth);
       const directionDown = !isSet;
       const oldEndY = directionDown ? DIST : -DIST;
       const newStartY = directionDown ? -DIST : DIST;
@@ -4443,9 +4968,14 @@ function smoothScrollTo(targetY) {
       badge.classList.toggle('is-set', isSet);
       timeWrap.classList.toggle('is-time-set', isSet);
 
-      // 현재 한 줄의 실제 폭만 한 번 애니메이션한다. timeWrap 자체에는
-      // width transition을 걸지 않아 별도의 2차 이동이 생기지 않는다.
+      // 현재 한 줄의 실제 폭만 한 번 애니메이션한다. badge와 timeWrap을
+      // 같은 프레임에 같은 지속시간으로 함께 잠가서, 배지 옆 버튼이
+      // 옆으로 부드럽게 밀리도록 한다(별도의 2차 이동은 생기지 않는다).
       badge.style.width = oldWidth + 'px';
+      timeWrap.style.transition = 'none';
+      timeWrap.style.minWidth = '0';
+      timeWrap.style.width = parentWidth + 'px';
+      void timeWrap.offsetWidth;
 
       requestAnimationFrame(() => {
         if (!isCurrent()) return;
@@ -4456,15 +4986,18 @@ function smoothScrollTo(targetY) {
         oldLayer.style.transition = `transform ${DURATION}ms ${EASE}, opacity 280ms ease`;
         newLayer.style.transition = `transform ${DURATION}ms ${EASE}, opacity 280ms ease`;
         badge.style.transition = `width ${DURATION}ms ${EASE}`;
+        timeWrap.style.transition = `width ${DURATION}ms ${EASE}`;
 
         oldLayer.style.transform = `translate(-50%, calc(-50% + ${oldEndY}px)) scale(${oldEndScale})`;
         oldLayer.style.opacity = '0';
         newLayer.style.transform = `translate(-50%, -50%) scale(${newEndScale})`;
         newLayer.style.opacity = '1';
         badge.style.width = newWidth + 'px';
+        timeWrap.style.width = newParentWidth + 'px';
       });
 
-      window.setTimeout(() => {
+      timeWrap._widthAnimTimer = window.setTimeout(() => {
+        timeWrap._widthAnimTimer = null;
         if (!isCurrent()) return;
 
         // transition을 끈 뒤 최종 DOM으로 한 번만 교체한다.
@@ -4480,6 +5013,13 @@ function smoothScrollTo(targetY) {
         // 원래 인라인 상태를 복구하되 transition은 다음 전환에서 다시 설정한다.
         badge.style.transition = oldInlineTransition;
         if (!oldInlineWidth) badge.style.width = '';
+
+        // timeWrap도 잠갔던 width/min-width를 원래 인라인 상태로 복구한다.
+        timeWrap.style.transition = 'none';
+        timeWrap.style.width = oldInlineWrapWidth;
+        timeWrap.style.minWidth = oldInlineWrapMinWidth;
+        void timeWrap.offsetWidth;
+        timeWrap.style.transition = oldInlineWrapTransition;
       }, DURATION + 15);
     }
 
@@ -4517,7 +5057,8 @@ function smoothScrollTo(targetY) {
       let tempTime = new Date(baseTime.getTime() + sign * timeUnit * 60000);
 
       if (tempTime.getDate() !== now.getDate() || tempTime.getMonth() !== now.getMonth() || tempTime.getFullYear() !== now.getFullYear()) {
-        shake($('returnTimeVal'));
+        shake($('returnBadge'));
+        shakeOnly($('btnCustomTime'));
         showToast('하루를 넘겨서 설정할 수 없어요');
         return;
       }
@@ -4526,18 +5067,14 @@ function smoothScrollTo(targetY) {
       const nowMin = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes()).getTime();
 
       if (tempMin === nowMin) {
-        shake($('returnTimeVal'));
+        shake($('returnBadge'));
+        shakeOnly($('btnCustomTime'));
         showToast('현재 시간으로 설정할 수 없어요');
-        targetTime = new Date();
-        outTimeIsSet = false;
-        updateTimeDisplay('down');
         return;
       } else if (tempMin < nowMin) {
-        shake($('returnTimeVal'));
+        shake($('returnBadge'));
+        shakeOnly($('btnCustomTime'));
         showToast('현재 시간보다 이전으로 설정할 수 없어요');
-        targetTime = new Date();
-        outTimeIsSet = false;
-        updateTimeDisplay('down');
         return;
       }
 
@@ -4557,7 +5094,8 @@ function smoothScrollTo(targetY) {
       let tempTime = new Date(baseTime.getTime() + sign * lateTimeUnit * 60000);
 
       if (tempTime.getDate() !== now.getDate() || tempTime.getMonth() !== now.getMonth() || tempTime.getFullYear() !== now.getFullYear()) {
-        shake($('lateReturnTimeVal'));
+        shake($('lateReturnBadge'));
+        shakeOnly($('btnLateCustomTime'));
         showToast('하루를 넘겨서 설정할 수 없어요');
         return;
       }
@@ -4566,18 +5104,14 @@ function smoothScrollTo(targetY) {
       const nowMin = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes()).getTime();
 
       if (tempMin === nowMin) {
-        shake($('lateReturnTimeVal'));
+        shake($('lateReturnBadge'));
+        shakeOnly($('btnLateCustomTime'));
         showToast('현재 시간으로 설정할 수 없어요');
-        lateTargetTime = new Date();
-        lateTimeIsSet = false;
-        updateLateTimeDisplay('down');
         return;
       } else if (tempMin < nowMin) {
-        shake($('lateReturnTimeVal'));
+        shake($('lateReturnBadge'));
+        shakeOnly($('btnLateCustomTime'));
         showToast('현재 시간보다 이전으로 설정할 수 없어요');
-        lateTargetTime = new Date();
-        lateTimeIsSet = false;
-        updateLateTimeDisplay('down');
         return;
       }
 
@@ -4595,24 +5129,27 @@ function smoothScrollTo(targetY) {
       b2.addEventListener('animationend', () => b2.classList.remove('btn-hint'), { once: true });
     }
 
-    function validateReturnTime(target, valEl, errWrapId, btnMinus, btnPlus) {
+    function validateReturnTime(target, valEl, errWrapId, btnMinus, btnPlus, btnCustom) {
       const now = new Date();
       const tempMin = new Date(target.getFullYear(), target.getMonth(), target.getDate(), target.getHours(), target.getMinutes()).getTime();
       const nowMin = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes()).getTime();
+      const badge = valEl ? valEl.querySelector('.ret-badge') : null;
 
       if (tempMin === nowMin) {
-        shake(valEl);
+        shake(badge || valEl);
         if (errWrapId) expandWrap($(errWrapId));
         if (btnMinus) shake(btnMinus);
         if (btnPlus) shake(btnPlus);
+        if (btnCustom) shakeOnly(btnCustom);
         showToast('현재 시간으로 설정할 수 없어요');
         return false;
       }
       if (tempMin < nowMin) {
-        shake(valEl);
+        shake(badge || valEl);
         if (errWrapId) expandWrap($(errWrapId));
         if (btnMinus) shake(btnMinus);
         if (btnPlus) shake(btnPlus);
+        if (btnCustom) shakeOnly(btnCustom);
         showToast('현재 시간보다 이전으로 설정할 수 없어요');
         return false;
       }
@@ -4913,7 +5450,7 @@ function smoothScrollTo(targetY) {
         showToast('외출 목적을 선택하세요');
         return;
       }
-      if (!validateReturnTime(targetTime, $('returnTimeVal'), 'outTimeErrorWrap', $('btnTimeMinus'), $('btnTimePlus'))) return;
+      if (!validateReturnTime(targetTime, $('returnTimeVal'), 'outTimeErrorWrap', $('btnTimeMinus'), $('btnTimePlus'), $('btnCustomTime'))) return;
 
       const timeStr = getAmPmTime(targetTime);
       const currTimeStr = getAmPmTime(new Date());
@@ -4975,7 +5512,7 @@ function smoothScrollTo(targetY) {
         showToast(isCustom ? '사유를 직접 입력해주세요' : '지각 사유를 선택하세요');
         return;
       }
-      if (!validateReturnTime(lateTargetTime, $('lateReturnTimeVal'), 'lateTimeErrorWrap', $('btnLateTimeMinus'), $('btnLateTimePlus'))) return;
+      if (!validateReturnTime(lateTargetTime, $('lateReturnTimeVal'), 'lateTimeErrorWrap', $('btnLateTimeMinus'), $('btnLateTimePlus'), $('btnLateCustomTime'))) return;
 
       const timeStr = getAmPmTime(lateTargetTime);
       const currTimeStr = getAmPmTime(new Date());
