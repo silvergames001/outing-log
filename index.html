@@ -334,14 +334,6 @@
                   filter var(--press-out) !important;
     }
 
-    /* 바텀시트 목록 항목은 선택 즉시 시트가 닫히므로, 눌렀다 뗄 때
-       길게 튕기는 press-out 대신 press-in과 같은 짧은 속도로 바로 복귀시킨다. */
-    .mgr-item {
-      transition: transform var(--press-in), background-color var(--press-out),
-                  border-color var(--press-out), box-shadow var(--press-out),
-                  filter var(--press-in) !important;
-    }
-
     .btn-simple:active,
     .btn-simple.pressed,
     .chip:active,
@@ -1264,6 +1256,9 @@
       color: var(--muted);
       font-family: inherit;
       position: relative;
+      /* 눌렸을 때와 원래 크기로 돌아올 때 기준점이 계속 같도록,
+         :active에서만 바꾸지 않고 항상 왼쪽(꼬리 쪽)을 기준으로 둔다. */
+      transform-origin: left center;
     }
 
     /* 말풍선 꼬리 - 보통 말풍선의 아래쪽 꼬리를 90도 눕혀서 왼쪽(시간 텍스트 쪽)을 가리키게 */
@@ -1312,6 +1307,8 @@
     /* '직접 설정' 버튼 + 말풍선을 하나의 버튼처럼 함께 누름 */
     .edit-col {
       transition: transform 0.4s var(--toss-spring);
+      /* 눌림/복귀 사이에 기준점이 안 바뀌도록 항상 왼쪽(꼬리 쪽) 고정 */
+      transform-origin: left center;
     }
 
     .edit-col:has(.stepper-edit:active),
@@ -1627,7 +1624,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      background: var(--gray-fill);
+      background: transparent;
       border: none;
       border-radius: 16px;
       padding: 14px 16px;
@@ -1637,7 +1634,17 @@
       text-align: left;
       color: var(--ink);
       font-family: inherit;
-      transition: all 0.2s;
+      /* 눌림/뗌 transition은 위쪽 버튼 공통 규칙(--press-in / --press-out)을 그대로 쓴다 */
+    }
+
+    /* 평소엔 박스 없이 밋밋하게 두고, 눌렀을 때만 회색이 나타나면서
+       filter: brightness(0.92)(공통 규칙)로 한 번 더 어두워지는 효과를 낸다.
+       .sel(선택된 항목)도 .pressed 동안에는 똑같이 회색이 유지되도록 함께 지정한다. */
+    .mgr-item:active,
+    .mgr-item.pressed,
+    .mgr-item.sel:active,
+    .mgr-item.sel.pressed {
+      background: var(--gray-fill);
     }
 
     .mgr-item .ava {
@@ -1707,7 +1714,7 @@
     }
 
     .mgr-item.sel {
-      background: var(--blue-light);
+      background: transparent;
       color: var(--blue-main);
     }
 
@@ -3286,16 +3293,18 @@
      <div class="label" style="margin-bottom:8px;">외출 목적</div>
      <div class="purpose-row">
       <div class="purpose-row-label" id="purposeRowLabel">
-       <span class="purpose-row-value" id="purposeRowValue"> <span class="purpose-row-icon is-unselected" id="purposeRowIcon"> 
-         <svg viewBox="0 0 100 100" style="width:100%;height:100%;display:block;">
-          <circle cx="50" cy="50" r="46" fill="none" stroke="#8b95a1" stroke-width="5" stroke-dasharray="6 6" /><path d="M 28 42 A 12 12 0 0 0 46 42" stroke="#8b95a1" stroke-width="7" stroke-linecap="round" fill="none" /><path d="M 54 42 A 12 12 0 0 0 72 42" stroke="#8b95a1" stroke-width="7" stroke-linecap="round" fill="none" /><path d="M 38 64 A 12 12 0 0 1 62 64 Z" fill="#8b95a1" />
-         </svg> 
-        </span> <span class="purpose-row-text-wrap"><span id="purposeLabelText" class="ph trigger-text-part">미선택</span></span> </span> <span class="purpose-select-slide" id="purposeSelectSlide"> 
+       <span class="purpose-row-value" id="purposeRowValue">
+        <span class="purpose-row-icon is-unselected" id="purposeRowIcon">
+         <svg viewBox="0 0 100 100" style="width:100%;height:100%;display:block;"><circle cx="50" cy="50" r="46" fill="none" stroke="#8b95a1" stroke-width="5" stroke-dasharray="6 6" /><path d="M 28 42 A 12 12 0 0 0 46 42" stroke="#8b95a1" stroke-width="7" stroke-linecap="round" fill="none" /><path d="M 54 42 A 12 12 0 0 0 72 42" stroke="#8b95a1" stroke-width="7" stroke-linecap="round" fill="none" /><path d="M 38 64 A 12 12 0 0 1 62 64 Z" fill="#8b95a1" /></svg>
+        </span>
+        <span class="purpose-row-text-wrap"><span id="purposeLabelText" class="ph trigger-text-part">미선택</span></span>
+       </span>
+       <span class="purpose-select-slide" id="purposeSelectSlide">
         <button type="button" class="stepper-edit purpose-select-btn" id="purposeTrigger" aria-label="외출 목적 선택">
          <svg viewBox="0 0 24 24" fill="currentColor">
           <path fill-rule="evenodd" clip-rule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 0 0-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 0 0-2.282.819l-.922 1.597a1.875 1.875 0 0 0 .432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 0 0 0 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 0 0-.432 2.385l.922 1.597a1.875 1.875 0 0 0 2.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 0 0 2.28-.819l.923-1.597a1.875 1.875 0 0 0-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 0 0 0-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 0 0-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 0 0-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 0 0-1.85-1.567h-1.843ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" />
          </svg>
-        </button> 
+        </button>
        </span>
       </div>
      </div>
@@ -3310,11 +3319,7 @@
      <div class="time-header-row">
       <div class="time-display-wrap" style="padding:4px 0 8px;">
        <div class="time-val" id="returnTimeVal">
-        <span class="cur-time-group"><span class="t-part valAmPm" id="valAmPm">오전</span> <span class="t-part" id="valHour">12</span> <span class="t-colon">:</span> <span class="t-part" id="valMinute">00</span></span><span class="time-flow" aria-hidden="true"><span class="time-flow-ch">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-           <polyline points="9 6 15 12 9 18" />
-          </svg>
-         </span></span><span class="ret-badge" id="returnBadge">시간 미정</span>
+        <span class="cur-time-group"><span class="t-part valAmPm" id="valAmPm">오전</span> <span class="t-part" id="valHour">12</span> <span class="t-colon">:</span> <span class="t-part" id="valMinute">00</span></span><span class="time-flow" aria-hidden="true"><span class="time-flow-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></span></span><span class="ret-badge" id="returnBadge">시간 미정</span>
        </div>
       </div>
       <button type="button" class="stepper-edit" id="btnCustomTime" aria-label="직접 선택">
@@ -3378,16 +3383,18 @@
       <div class="label" style="margin-bottom:8px;">지각 사유</div>
       <div class="purpose-row">
        <div class="purpose-row-label" id="lateReasonRowLabel">
-        <span class="purpose-row-value" id="lateReasonRowValue"> <span class="purpose-row-icon is-unselected" id="lateReasonRowIcon"> 
-          <svg viewBox="0 0 100 100" style="width:100%;height:100%;display:block;">
-           <circle cx="50" cy="50" r="46" fill="none" stroke="#8b95a1" stroke-width="5" stroke-dasharray="6 6" /><path d="M 28 42 A 12 12 0 0 0 46 42" stroke="#8b95a1" stroke-width="7" stroke-linecap="round" fill="none" /><path d="M 54 42 A 12 12 0 0 0 72 42" stroke="#8b95a1" stroke-width="7" stroke-linecap="round" fill="none" /><path d="M 38 64 A 12 12 0 0 1 62 64 Z" fill="#8b95a1" />
-          </svg> 
-         </span> <span class="purpose-row-text-wrap"><span id="lateReasonTriggerText" class="ph trigger-text-part">미선택</span></span> </span> <span class="purpose-select-slide" id="lateReasonSelectSlide"> 
+        <span class="purpose-row-value" id="lateReasonRowValue">
+         <span class="purpose-row-icon is-unselected" id="lateReasonRowIcon">
+          <svg viewBox="0 0 100 100" style="width:100%;height:100%;display:block;"><circle cx="50" cy="50" r="46" fill="none" stroke="#8b95a1" stroke-width="5" stroke-dasharray="6 6" /><path d="M 28 42 A 12 12 0 0 0 46 42" stroke="#8b95a1" stroke-width="7" stroke-linecap="round" fill="none" /><path d="M 54 42 A 12 12 0 0 0 72 42" stroke="#8b95a1" stroke-width="7" stroke-linecap="round" fill="none" /><path d="M 38 64 A 12 12 0 0 1 62 64 Z" fill="#8b95a1" /></svg>
+         </span>
+         <span class="purpose-row-text-wrap"><span id="lateReasonTriggerText" class="ph trigger-text-part">미선택</span></span>
+        </span>
+        <span class="purpose-select-slide" id="lateReasonSelectSlide">
          <button type="button" class="stepper-edit purpose-select-btn" id="lateReasonTrigger" aria-label="지각 사유 선택">
           <svg viewBox="0 0 24 24" fill="currentColor">
            <path fill-rule="evenodd" clip-rule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 0 0-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 0 0-2.282.819l-.922 1.597a1.875 1.875 0 0 0 .432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 0 0 0 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 0 0-.432 2.385l.922 1.597a1.875 1.875 0 0 0 2.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 0 0 2.28-.819l.923-1.597a1.875 1.875 0 0 0-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 0 0 0-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 0 0-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 0 0-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 0 0-1.85-1.567h-1.843ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" />
           </svg>
-         </button> 
+         </button>
         </span>
        </div>
       </div>
@@ -3402,11 +3409,7 @@
       <div class="time-header-row">
        <div class="time-display-wrap" style="padding: 4px 0 10px;">
         <div class="late-time-val" id="lateReturnTimeVal">
-         <span class="cur-time-group"><span class="t-part valAmPm" id="lateValAmPm">오전</span> <span class="t-part" id="lateValHour">12</span> <span class="t-colon">:</span> <span class="t-part" id="lateValMinute">00</span></span><span class="time-flow" aria-hidden="true"><span class="time-flow-ch">
-           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="9 6 15 12 9 18" />
-           </svg>
-          </span></span><span class="ret-badge" id="lateReturnBadge">시간 미정</span>
+         <span class="cur-time-group"><span class="t-part valAmPm" id="lateValAmPm">오전</span> <span class="t-part" id="lateValHour">12</span> <span class="t-colon">:</span> <span class="t-part" id="lateValMinute">00</span></span><span class="time-flow" aria-hidden="true"><span class="time-flow-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></span></span><span class="ret-badge" id="lateReturnBadge">시간 미정</span>
         </div>
        </div>
        <button type="button" class="stepper-edit" id="btnLateCustomTime" aria-label="직접 선택">
@@ -3443,7 +3446,7 @@
    <section class="view done" id="doneView">
     <div class="ring" id="doneRing">
      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="4 12 9 17 20 6" />
+      <polyline points="4 12 9 17 20 6"></polyline>
      </svg>
     </div>
     <h2 id="doneTitle">제출 완료</h2>
@@ -3488,7 +3491,7 @@
     <div class="mgr-list" id="mgrList"></div>
     <div class="scroll-indicator" id="mgrScrollIndicator">
      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="6 9 12 15 18 9" />
+      <polyline points="6 9 12 15 18 9"></polyline>
      </svg>
     </div>
    </div>
@@ -4296,7 +4299,7 @@ function smoothScrollTo(targetY) {
     }
 
     const MANAGERS = ['😭잘 모름😭', '김소희Ⓜ️', '김혜리Ⓜ️', '송유진Ⓜ️', '엄혜령Ⓜ️', '정준환Ⓜ️', '김진주Ⓜ️', '이명호Ⓜ️', '심예지™️', '윤현식™️'];
-    const AVA_COLORS = ['#b0b8c1', 'var(--blue-main)', '#c9e4ff', 'var(--error)', '#fed6d6'];
+    const AVA_GRADIENT = 'linear-gradient(160deg, #9BA9D6, #7C89C4)';
     let mgrValue = '';
     const unknownSvg = `<svg viewBox="0 0 100 100" style="width:100%;height:100%;display:block;"><circle cx="50" cy="50" r="50" fill="#e5e8eb" /><path d="M 28 42 A 12 12 0 0 0 46 42" stroke="#b0b8c1" stroke-width="7" stroke-linecap="round" fill="none" /><path d="M 54 42 A 12 12 0 0 0 72 42" stroke="#b0b8c1" stroke-width="7" stroke-linecap="round" fill="none" /><path d="M 38 64 A 12 12 0 0 1 62 64 Z" fill="#b0b8c1" /></svg>`;
     // 외출 목적/지각 사유의 '미선택' 아이콘: 매니저 아바타 아이콘과 같은 얼굴이지만,
@@ -4338,7 +4341,7 @@ function smoothScrollTo(targetY) {
         animateTriggerText('mgrTriggerText', name, false);
         ava.style.display = 'flex';
         if (name.includes('잘 모름')) { ava.innerHTML = unknownSvg; ava.style.background = 'transparent'; }
-        else { ava.innerHTML = avaChar(name); ava.style.background = AVA_COLORS[Math.max(0, MANAGERS.indexOf(name)) % AVA_COLORS.length]; }
+        else { ava.innerHTML = avaChar(name); ava.style.background = AVA_GRADIENT; }
       } else {
         animateTriggerText('mgrTriggerText', '눌러서 선택', true);
         ava.style.display = 'none';
@@ -4352,7 +4355,7 @@ function smoothScrollTo(targetY) {
         b.type = 'button'; b.className = 'mgr-item' + (m === mgrValue ? ' sel' : '');
         const isUnknown = m.includes('잘 모름');
         const avaContent = isUnknown ? unknownSvg : avaChar(m);
-        const avaBg = isUnknown ? 'transparent' : AVA_COLORS[i % AVA_COLORS.length];
+        const avaBg = isUnknown ? 'transparent' : AVA_GRADIENT;
         b.innerHTML = `<span class="ava" style="background:${avaBg}">${avaContent}</span><span class="nm">${m}</span><span class="check">${checkSvg}</span>`;
 
         b.onclick = () => {
