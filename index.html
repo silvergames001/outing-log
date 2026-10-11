@@ -204,6 +204,22 @@
       animation-delay: 0.13s;
     }
 
+    /* 이름/매니저 카드와 같은 방식으로, 앱이 외출 작성(또는 복귀 대기) 화면으로
+       바로 들어올 때만 시계와 설정(톱니) 버튼도 위에서 내려오며 나타나게 한다.
+       JS(playHeaderExtraIntro)가 이때만 .drop-in 클래스를 붙인다. */
+    .clock.drop-in,
+    .gear.drop-in {
+      animation: dropInTop 0.6s var(--toss-sheet) backwards;
+    }
+
+    .clock.drop-in {
+      animation-delay: 0.19s;
+    }
+
+    .gear.drop-in {
+      animation-delay: 0.25s;
+    }
+
     .who {
       line-height: 1.4;
       display: flex;
@@ -4798,6 +4814,19 @@ function smoothScrollTo(targetY) {
         el.classList.add('drop-in');
       });
     }
+
+    // 시계/설정 버튼 전용 등장 재생. 설정 화면으로 들어갈 때는 이미 CSS
+    // 트랜지션(body.is-setup)으로 접히므로 이 함수를 부르지 않는다 - 외출
+    // 작성/복귀 대기 화면으로 바로 진입할 때만 호출해, 이름/매니저 카드와
+    // 같은 타이밍으로 위에서 내려오며 나타나게 한다.
+    function playHeaderExtraIntro() {
+      [document.querySelector('.clock'), $('gearBtn')].forEach(el => {
+        if (!el) return;
+        el.classList.remove('drop-in');
+        void el.offsetWidth;
+        el.classList.add('drop-in');
+      });
+    }
     $('gearBtn').onclick = () => {
       $('setName').value = store.name; mgrValue = store.mgr; setTrigger(mgrValue);
       show('setupView', true);
@@ -5902,6 +5931,9 @@ function smoothScrollTo(targetY) {
           goMain(false);
         }
       }
+      // 이 분기(설정 화면이 아니라 바로 외출 작성/복귀 대기 화면으로 시작)에서만
+      // 시계/설정 버튼이 이름/매니저 카드와 같이 위에서 내려오며 나타난다.
+      playHeaderExtraIntro();
     } else {
       show('setupView');
     }
