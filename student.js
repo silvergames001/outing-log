@@ -9,7 +9,7 @@
   var blocked = null, box = null, wins = [];
   var MSG = {
     banned: ['Access Banned', '관리자에게 문의해주세요.'],
-    paused: ['이용이 잠시 중지됐어요', '관리자가 확인 중이에요. 잠시 후 다시 확인해주세요.']
+    paused: ['Access Paused', '관리자에게 문의해주세요.']
   };
 
   function hideBlock() { blocked = null; if (box) { var b = box; box = null; b.style.opacity = 0; setTimeout(function () { b.remove(); }, 350); } }
